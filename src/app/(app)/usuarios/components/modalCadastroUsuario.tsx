@@ -280,11 +280,14 @@ export default function ModalCadastroUsuario({
      * Fecha o modal e limpa o formulário para uma nova inclusão.
      */
     function fecharModalCadastroUsuario() {
+        aoFechar();
+    }
+
+    function limparEstadoModalCadastroUsuario() {
         setFormulario(estadoInicialFormulario);
         setMensagemResposta("");
         setCarregando(false);
         setModalConfirmacaoExclusaoAberto(false);
-        aoFechar();
     }
 
     useEffect(() => {
@@ -308,7 +311,13 @@ export default function ModalCadastroUsuario({
 
     return (
         <>
-            <Modal show={aberto} onHide={fecharModalCadastroUsuario} centered size="lg">
+            <Modal
+                show={aberto}
+                onHide={fecharModalCadastroUsuario}
+                onExited={limparEstadoModalCadastroUsuario}
+                centered
+                size="lg"
+            >
                 <Modal.Header closeButton>
                     <Modal.Title className="text-lg font-bold">
                         {estaVisualizandoUsuario ? "Usuário" : "Novo usuário"}
@@ -533,7 +542,7 @@ export default function ModalCadastroUsuario({
             </Modal>
 
             <ModalConfirmacao
-                isOpen={modalConfirmacaoExclusaoAberto}
+                isOpen={aberto && modalConfirmacaoExclusaoAberto}
                 message="Deseja realmente excluir este usuário?"
                 icon={<FaExclamationTriangle className="text-4xl text-red-600" />}
                 onConfirm={deletarUsuario}
@@ -543,12 +552,12 @@ export default function ModalCadastroUsuario({
             />
 
             <ModalCarregamento
-                show={carregando}
+                show={aberto && carregando}
                 text={textoCarregamento}
             />
 
             <ModalResposta
-                isOpen={Boolean(mensagemResposta)}
+                isOpen={aberto && Boolean(mensagemResposta)}
                 message={mensagemResposta}
                 onClose={() => setMensagemResposta("")}
             />

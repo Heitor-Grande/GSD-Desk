@@ -158,15 +158,17 @@ export default function PaginaPerfis() {
                 nomeArquivoExcel="perfis"
             />
 
-            <ModalCadastroPerfil
-                aberto={modalCadastroAberto}
-                idPerfil={idPerfilSelecionado}
-                aoFechar={() => {
-                    setModalCadastroAberto(false);
-                    setIdPerfilSelecionado(null);
-                    void carregarPerfisCadastrados();
-                }}
-            />
+            {modalCadastroAberto && (
+                <ModalCadastroPerfil
+                    aberto={modalCadastroAberto}
+                    idPerfil={idPerfilSelecionado}
+                    aoFechar={() => {
+                        setModalCadastroAberto(false);
+                        setIdPerfilSelecionado(null);
+                        void carregarPerfisCadastrados();
+                    }}
+                />
+            )}
 
             <ModalResposta
                 isOpen={Boolean(mensagemResposta)}

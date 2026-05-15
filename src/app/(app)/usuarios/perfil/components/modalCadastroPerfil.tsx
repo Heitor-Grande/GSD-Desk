@@ -296,6 +296,10 @@ export default function ModalCadastroPerfil({
     }
 
     function fecharModalCadastroPerfil() {
+        aoFechar();
+    }
+
+    function limparEstadoModalCadastroPerfil() {
         setFormulario({
             ...estadoInicialPerfil,
             permissoes: clonarPermissoes(permissoesIniciais),
@@ -303,7 +307,6 @@ export default function ModalCadastroPerfil({
         setMensagemResposta("");
         setCarregando(false);
         setModalConfirmacaoExclusaoAberto(false);
-        aoFechar();
     }
 
     useEffect(() => {
@@ -328,7 +331,13 @@ export default function ModalCadastroPerfil({
 
     return (
         <>
-            <Modal show={aberto} onHide={fecharModalCadastroPerfil} centered size="lg">
+            <Modal
+                show={aberto}
+                onHide={fecharModalCadastroPerfil}
+                onExited={limparEstadoModalCadastroPerfil}
+                centered
+                size="lg"
+            >
                 <Modal.Header closeButton>
                     <Modal.Title className="text-lg font-bold">
                         {estaEditandoPerfil ? "Perfil" : "Novo perfil"}
@@ -468,7 +477,7 @@ export default function ModalCadastroPerfil({
             </Modal>
 
             <ModalConfirmacao
-                isOpen={modalConfirmacaoExclusaoAberto}
+                isOpen={aberto && modalConfirmacaoExclusaoAberto}
                 message="Deseja realmente excluir este perfil?"
                 icon={<FaExclamationTriangle className="text-4xl text-red-600" />}
                 onConfirm={deletarPerfil}
@@ -478,12 +487,12 @@ export default function ModalCadastroPerfil({
             />
 
             <ModalCarregamento
-                show={carregando}
+                show={aberto && carregando}
                 text={textoCarregamento}
             />
 
             <ModalResposta
-                isOpen={Boolean(mensagemResposta)}
+                isOpen={aberto && Boolean(mensagemResposta)}
                 message={mensagemResposta}
                 onClose={() => setMensagemResposta("")}
             />

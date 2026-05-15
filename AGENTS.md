@@ -4,7 +4,7 @@ Orientacoes para agentes e desenvolvedores que forem trabalhar neste template.
 
 ## Objetivo do projeto
 
-Este repositorio e um template padrao para iniciar novas aplicacoes com Next.js, TypeScript e Bootstrap. Ele deve funcionar como uma base reutilizavel, com estrutura, componentes, modais, hooks, services e utils prontos para evolucao em novos projetos.
+Este repositorio e um template padrao para iniciar novas aplicacoes com Next.js, TypeScript e Tailwind CSS. Ele deve funcionar como uma base reutilizavel, com estrutura, componentes, modais, hooks, services e utils prontos para evolucao em novos projetos.
 
 Ao alterar este repositorio, priorize solucoes genericas e reaproveitaveis. Evite incluir regras de negocio especificas de uma aplicacao final diretamente no template.
 
@@ -12,7 +12,8 @@ Ao alterar este repositorio, priorize solucoes genericas e reaproveitaveis. Evit
 
 - Next.js com App Router em `src/app`.
 - TypeScript com `strict` habilitado.
-- Bootstrap e React Bootstrap para UI.
+- Tailwind CSS para UI.
+- React Bootstrap apenas para a estrutura de modais existentes.
 - `react-select` para selects.
 - `react-icons` para icones.
 - Alias de importacao: `@/*` aponta para `src/*`.
@@ -49,7 +50,8 @@ Se uma pasta ainda nao existir, crie apenas quando houver codigo real para coloc
 
 - Componentes interativos devem usar `"use client"` no topo do arquivo.
 - Prefira componentes pequenos, tipados e com props explicitas.
-- Use React Bootstrap quando o componente representar UI Bootstrap.
+- Use Tailwind CSS para paginas, layouts e componentes reutilizaveis.
+- Nao use Bootstrap para novos componentes de UI. React Bootstrap deve ficar restrito aos modais que ja seguem esse padrao.
 - Use o alias `@/` para imports de arquivos dentro de `src`.
 - Evite acoplar componentes reutilizaveis a uma rota especifica.
 - Evite textos, estilos ou comportamentos de um dominio especifico dentro de componentes base.
@@ -71,6 +73,26 @@ Padroes desejados:
 Quando criar um novo modal, pense nele como algo que possa ser usado por qualquer aplicacao criada a partir deste template.
 
 Para modais locais de uma tela ou modulo, concentre a regra de negocio dentro do proprio modal. O componente pai deve passar apenas props de controle como `aberto` e `aoFechar`, evitando callbacks como `aoSalvar` quando a acao pertence ao fluxo do modal.
+
+Modais de formulario devem ser renderizados condicionalmente pelo componente pai, por exemplo:
+
+```tsx
+{modalCadastroAberto && (
+    <ModalCadastro
+        aberto={modalCadastroAberto}
+        idRegistro={idRegistroSelecionado}
+        aoFechar={() => {
+            setModalCadastroAberto(false);
+            setIdRegistroSelecionado(null);
+            void carregarRegistros();
+        }}
+    />
+)}
+```
+
+Esse padrao evita que, apos submit em modo edicao, o pai limpe o id selecionado enquanto o modal ainda esta montado e o formulario seja renderizado como novo cadastro antes de fechar.
+
+Dentro do modal, prefira que a funcao `fecharModal...` apenas chame `aoFechar()`. Se precisar limpar estado local, use `onExited` do `react-bootstrap/Modal`, seguindo o mesmo padrao do modal de empresa.
 
 ## Hooks
 
@@ -217,7 +239,7 @@ Antes de criar uma nova validacao, verifique se ela pertence a esse arquivo ou s
 - Prefira tipos e interfaces explicitos para props.
 - Evite `any`; use tipos especificos ou generics quando necessario.
 - Nao adicione bibliotecas novas sem necessidade clara para o template.
-- Preserve o padrao visual Bootstrap ja adotado.
+- Preserve o padrao visual Tailwind ja adotado.
 - Mantenha portugues correto em textos visiveis, mensagens de API, placeholders, metadados e comentarios. Use acentos e grafia correta, por exemplo: `aplicação`, `usuário`, `não`, `possível`, `requisição`, `sessão`.
 - Comentarios devem explicar decisoes ou trechos nao obvios, nao repetir o que o codigo ja diz.
 - Funcoes e componentes devem possuir comentarios explicando seu uso e sua utilidade no template. Prefira comentarios curtos em formato JSDoc acima da funcao ou componente.

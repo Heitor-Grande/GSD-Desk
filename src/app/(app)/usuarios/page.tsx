@@ -156,15 +156,17 @@ export default function PaginaUsuarios() {
                 aoClicarLinha={abrirCadastroUsuarioSelecionado}
             />
 
-            <ModalCadastroUsuario
-                aberto={modalCadastroAberto}
-                idUsuario={idUsuarioSelecionado}
-                aoFechar={() => {
-                    setModalCadastroAberto(false);
-                    setIdUsuarioSelecionado(null);
-                    carregarUsuariosCadastrados();
-                }}
-            />
+            {modalCadastroAberto && (
+                <ModalCadastroUsuario
+                    aberto={modalCadastroAberto}
+                    idUsuario={idUsuarioSelecionado}
+                    aoFechar={() => {
+                        setModalCadastroAberto(false);
+                        setIdUsuarioSelecionado(null);
+                        void carregarUsuariosCadastrados();
+                    }}
+                />
+            )}
 
             <ModalResposta
                 isOpen={Boolean(mensagemResposta)}
