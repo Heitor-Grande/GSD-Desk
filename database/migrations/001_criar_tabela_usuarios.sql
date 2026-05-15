@@ -6,6 +6,7 @@ create table public.usuarios (
     telefone varchar(20) null,
     documento varchar(20) null,
     perfil_id bigint null,
+    empresa_padrao bigint default null,
     ativo bool default true not null,
     criado_em timestamptz default now() not null,
     atualizado_em timestamptz default now() not null,

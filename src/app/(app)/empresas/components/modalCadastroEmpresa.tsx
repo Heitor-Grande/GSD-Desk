@@ -2,6 +2,7 @@
 
 import { Botao } from "@/components/inputs/button";
 import { CampoTexto } from "@/components/inputs/input";
+import VinculoUsuarioEmpresa from "@/components/VinculoUsuarioEmpresa";
 import ModalConfirmacao from "@/components/modals/confirmModal";
 import { ModalCarregamento } from "@/components/modals/loading";
 import ModalResposta from "@/components/modals/responseModal";
@@ -345,6 +346,16 @@ export default function ModalCadastroEmpresa({
                                     className="mb-0"
                                 />
                             </div>
+
+                            {estaVisualizandoEmpresa && (
+                                <div className="md:col-span-12">
+                                    <VinculoUsuarioEmpresa
+                                        form="empresa"
+                                        idEmpresa={idEmpresa}
+                                        nomeContexto={formulario.fantasia}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </Modal.Body>
 
