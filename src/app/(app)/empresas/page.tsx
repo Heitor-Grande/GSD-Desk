@@ -5,7 +5,7 @@ import ModalResposta from "@/components/modals/responseModal";
 import { ColunaTabelaDados, TabelaDados } from "@/components/tables/dataTable";
 import { requisitarAPI } from "@/utils/api";
 import { useCallback, useEffect, useState } from "react";
-import { FaBuilding, FaPlus } from "react-icons/fa";
+import { FaPlus } from "react-icons/fa";
 import ModalCadastroEmpresa from "./components/modalCadastroEmpresa";
 
 type EmpresaTabela = {
@@ -32,11 +32,11 @@ function formatarCnpj(valor: string): string {
 
 /**
  * Página de listagem de empresas.
- * Use para consultar empresas cadastradas e abrir o formulário local de criação, edição e vínculos.
+ * Use como referência para telas de cadastro que precisam consumir API e renderizar a TabelaDados.
  */
 export default function PaginaEmpresas() {
     const [empresas, setEmpresas] = useState<EmpresaTabela[]>([]);
-    const [carregando, setCarregando] = useState(false);
+    const [carregando, setCarregando] = useState(true);
     const [mensagemResposta, setMensagemResposta] = useState("");
     const [modalCadastroAberto, setModalCadastroAberto] = useState(false);
     const [idEmpresaSelecionada, setIdEmpresaSelecionada] = useState<number | null>(null);
@@ -83,6 +83,7 @@ export default function PaginaEmpresas() {
             });
 
             setEmpresas(Array.isArray(resposta.dados) ? resposta.dados as EmpresaTabela[] : []);
+            setMensagemResposta("");
         } catch (erro) {
             const mensagemErro = erro instanceof Error
                 ? erro.message
@@ -122,41 +123,32 @@ export default function PaginaEmpresas() {
             <div className="mb-6">
                 <div className="w-full rounded-xl border border-slate-200 bg-white shadow-lg shadow-slate-200/60">
                     <div className="p-6">
-                        <div className="flex items-center gap-3">
-                            <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                                <FaBuilding />
-                            </span>
-                            <div>
-                                <h1 className="text-xl font-bold text-slate-900">Empresas</h1>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Consulte empresas cadastradas e gerencie seus vínculos com usuários.
-                                </p>
-                            </div>
-                        </div>
-
+                        <h5 className="text-lg font-bold text-slate-900">Empresas</h5>
                         <hr className="my-4 border-slate-200" />
 
-                        <div className="grid gap-4 md:grid-cols-12 md:items-center">
-                            <div className="md:col-span-8 lg:col-span-10">
-                                <p className="mb-0 text-slate-500">
-                                    Clique em uma empresa para visualizar, editar ou excluir o cadastro.
-                                </p>
-                            </div>
-                            <div className="md:col-span-4 lg:col-span-2">
-                                <Botao
-                                    size="sm"
-                                    label="Nova empresa"
-                                    icon={<FaPlus size={14} />}
-                                    onClick={() => {
-                                        setIdEmpresaSelecionada(null);
-                                        setModalCadastroAberto(true);
-                                    }}
-                                    disabled={carregando}
-                                    loading={false}
-                                    variant="outline-primary"
-                                    type="button"
-                                    className="w-full"
-                                />
+                        <div className="w-full">
+                            <div className="grid gap-4 md:grid-cols-12 md:items-center">
+                                <div className="md:col-span-8 lg:col-span-10">
+                                    <p className="mb-0 text-slate-500">
+                                        Consulte as empresas cadastradas na aplicação.
+                                    </p>
+                                </div>
+                                <div className="md:col-span-4 lg:col-span-2">
+                                    <Botao
+                                        size="sm"
+                                        label="Nova empresa"
+                                        icon={<FaPlus size={14} />}
+                                        onClick={() => {
+                                            setIdEmpresaSelecionada(null);
+                                            setModalCadastroAberto(true);
+                                        }}
+                                        disabled={carregando}
+                                        loading={carregando}
+                                        variant="outline-primary"
+                                        type="button"
+                                        className="w-full"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -175,15 +167,17 @@ export default function PaginaEmpresas() {
                 nomeArquivoExcel="empresas"
             />
 
-            <ModalCadastroEmpresa
-                aberto={modalCadastroAberto}
-                idEmpresa={idEmpresaSelecionada}
-                aoFechar={() => {
-                    setModalCadastroAberto(false);
-                    setIdEmpresaSelecionada(null);
-                    void carregarEmpresasCadastradas();
-                }}
-            />
+            {modalCadastroAberto && (
+                <ModalCadastroEmpresa
+                    aberto={modalCadastroAberto}
+                    idEmpresa={idEmpresaSelecionada}
+                    aoFechar={() => {
+                        setModalCadastroAberto(false);
+                        setIdEmpresaSelecionada(null);
+                        void carregarEmpresasCadastradas();
+                    }}
+                />
+            )}
 
             <ModalResposta
                 isOpen={Boolean(mensagemResposta)}
