@@ -3,7 +3,7 @@ import { consultarBancoDados } from "@/services/database";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { criarRespostaApi } from "@/utils/respostaApi";
 
-type RecursoPermissao = "dashboard" | "usuario" | "configuracao" | "perfil";
+type RecursoPermissao = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil";
 type AcaoPermissao = "visualizar" | "criar" | "atualizar" | "deletar";
 type PermissoesPerfil = Record<RecursoPermissao, Record<AcaoPermissao, boolean>>;
 

@@ -28,7 +28,7 @@ type MenuItem = {
     children?: MenuItem[];
 };
 
-type RecursoPermissao = "dashboard" | "usuario" | "configuracao" | "perfil";
+type RecursoPermissao = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil";
 type AcaoPermissao = "visualizar" | "criar" | "atualizar" | "deletar";
 type PermissoesPerfil = Record<RecursoPermissao, Record<AcaoPermissao, boolean>>;
 
@@ -115,6 +115,7 @@ export default function BarraLateral() {
     const iniciaisEmpresa = fantasiaEmpresa.trim().slice(0, 2).toUpperCase() || "GD";
     const podeVisualizarDashboard = Boolean(permissoesPerfil?.dashboard?.visualizar);
     const podeVisualizarUsuario = Boolean(permissoesPerfil?.usuario?.visualizar);
+    const podeVisualizarEmpresa = Boolean(permissoesPerfil?.empresa?.visualizar);
     const podeVisualizarPerfil = Boolean(permissoesPerfil?.perfil?.visualizar);
     const podeVisualizarConfiguracao = Boolean(permissoesPerfil?.configuracao?.visualizar);
 
@@ -131,7 +132,9 @@ export default function BarraLateral() {
         ...(podeVisualizarDashboard
             ? [{ label: "Dashboard", href: "/menuPrincipal", icon: <FaHome /> }]
             : []),
-        { label: "Empresas", href: "/empresas", icon: <FaBuilding /> },
+        ...(podeVisualizarEmpresa
+            ? [{ label: "Empresas", href: "/empresas", icon: <FaBuilding /> }]
+            : []),
         ...(menusUsuario.length > 0
             ? [{
                 label: "Usuários",

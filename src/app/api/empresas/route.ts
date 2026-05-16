@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
+import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
 import { normalizarCampoOpcional, validarEmail, validarStringComConteudo } from "@/utils/validacoes";
 
@@ -34,10 +35,14 @@ function normalizarCnpj(valor: unknown): string {
  */
 export async function DELETE(request: NextRequest) {
     try {
-        const idUsuario = obterIdUsuarioAutenticado(request);
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "empresa",
+            acao: "deletar",
+        });
 
-        if (!idUsuario) {
-            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        if (respostaPermissao) {
+            return respostaPermissao;
         }
 
         const id = Number(request.nextUrl.searchParams.get("id"));
@@ -86,10 +91,14 @@ function obterBooleanoAtivo(valor: unknown): boolean {
  */
 export async function GET(request: NextRequest) {
     try {
-        const idUsuario = obterIdUsuarioAutenticado(request);
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "empresa",
+            acao: "visualizar",
+        });
 
-        if (!idUsuario) {
-            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        if (respostaPermissao) {
+            return respostaPermissao;
         }
 
         const id = Number(request.nextUrl.searchParams.get("id"));
@@ -150,6 +159,16 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
     try {
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "empresa",
+            acao: "criar",
+        });
+
+        if (respostaPermissao) {
+            return respostaPermissao;
+        }
+
         const idUsuario = obterIdUsuarioAutenticado(request);
 
         if (!idUsuario) {
@@ -218,6 +237,16 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
     try {
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "empresa",
+            acao: "atualizar",
+        });
+
+        if (respostaPermissao) {
+            return respostaPermissao;
+        }
+
         const idUsuario = obterIdUsuarioAutenticado(request);
 
         if (!idUsuario) {

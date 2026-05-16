@@ -3,7 +3,7 @@ import { consultarBancoDados } from "@/services/database";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { criarRespostaApi } from "@/utils/respostaApi";
 
-export type RecursoPermissao = "usuario" | "configuracao" | "perfil" | "dashboard";
+export type RecursoPermissao = "usuario" | "empresa" | "configuracao" | "perfil" | "dashboard";
 export type AcaoPermissao = "visualizar" | "criar" | "atualizar" | "deletar";
 
 type PermissaoPerfil = Record<AcaoPermissao, boolean>;
@@ -22,31 +22,30 @@ type ConfiguracaoPermissaoApi = {
     acao: AcaoPermissao;
 };
 
-const recursosPermissao: RecursoPermissao[] = ["usuario", "configuracao", "perfil"];
 const acoesPermissao: AcaoPermissao[] = ["visualizar", "criar", "atualizar", "deletar"];
 
 /**
  * Confirma se o jsonb de permissões possui a estrutura esperada pelo template.
  * Use antes de acessar recurso/ação para evitar erro por payload incompleto.
  */
-function validarEstruturaPermissoes(permissoes: unknown): permissoes is PermissoesPerfil {
+function validarEstruturaPermissaoRecurso(
+    permissoes: unknown,
+    recurso: RecursoPermissao
+): permissoes is PermissoesPerfil {
     if (typeof permissoes !== "object" || permissoes === null) {
         return false;
     }
 
     const permissoesRecebidas = permissoes as Record<string, unknown>;
+    const permissoesRecurso = permissoesRecebidas[recurso];
 
-    return recursosPermissao.every((recurso) => {
-        const permissoesRecurso = permissoesRecebidas[recurso];
+    if (typeof permissoesRecurso !== "object" || permissoesRecurso === null) {
+        return false;
+    }
 
-        if (typeof permissoesRecurso !== "object" || permissoesRecurso === null) {
-            return false;
-        }
+    const acoesRecebidas = permissoesRecurso as Record<string, unknown>;
 
-        const acoesRecebidas = permissoesRecurso as Record<string, unknown>;
-
-        return acoesPermissao.every((acao) => typeof acoesRecebidas[acao] === "boolean");
-    });
+    return acoesPermissao.every((acao) => typeof acoesRecebidas[acao] === "boolean");
 }
 
 /**
@@ -101,8 +100,8 @@ export async function verificarPermissaoAPI({
         return criarRespostaApi(false, "O perfil vinculado ao usuário está Inativo.", null, 403);
     }
 
-    if (!validarEstruturaPermissoes(dadosPermissao.permissoes)) {
-        return criarRespostaApi(false, "As permissões do perfil estão inválidas.", null, 403);
+    if (!validarEstruturaPermissaoRecurso(dadosPermissao.permissoes, recurso)) {
+        return criarRespostaApi(false, "Você não possui permissão para executar esta ação.", null, 403);
     }
 
     if (dadosPermissao.permissoes[recurso]?.[acao] !== true) {

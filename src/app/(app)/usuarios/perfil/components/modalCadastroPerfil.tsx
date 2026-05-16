@@ -10,7 +10,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Modal } from "react-bootstrap";
 import { FaExclamationTriangle, FaSave, FaTimes, FaTrash } from "react-icons/fa";
 
-export type RecursoPermissaoPerfil = "dashboard" | "usuario" | "configuracao" | "perfil";
+export type RecursoPermissaoPerfil = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil";
 
 export type PermissaoPerfil = {
     criar: boolean;
@@ -44,6 +44,7 @@ interface ModalCadastroPerfilProps {
 const recursosPermissao: Array<{ chave: RecursoPermissaoPerfil; titulo: string }> = [
     { chave: "dashboard", titulo: "Dashboard" },
     { chave: "usuario", titulo: "Usuário" },
+    { chave: "empresa", titulo: "Empresa" },
     { chave: "configuracao", titulo: "Configuração" },
     { chave: "perfil", titulo: "Perfil" },
 ];
@@ -63,6 +64,12 @@ const permissoesIniciais: Record<RecursoPermissaoPerfil, PermissaoPerfil> = {
         visualizar: false,
     },
     usuario: {
+        criar: false,
+        deletar: false,
+        atualizar: false,
+        visualizar: false,
+    },
+    empresa: {
         criar: false,
         deletar: false,
         atualizar: false,
@@ -98,6 +105,7 @@ function clonarPermissoes(permissoes: Record<RecursoPermissaoPerfil, PermissaoPe
     return {
         dashboard: { ...permissoes.dashboard },
         usuario: { ...permissoes.usuario },
+        empresa: { ...permissoes.empresa },
         configuracao: { ...permissoes.configuracao },
         perfil: { ...permissoes.perfil },
     };
@@ -114,6 +122,10 @@ function normalizarPermissoesPerfil(permissoes: Partial<Record<RecursoPermissaoP
         usuario: {
             ...permissoesIniciais.usuario,
             ...permissoes.usuario,
+        },
+        empresa: {
+            ...permissoesIniciais.empresa,
+            ...permissoes.empresa,
         },
         configuracao: {
             ...permissoesIniciais.configuracao,

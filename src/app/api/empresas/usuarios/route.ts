@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
+import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
 
 type EntidadeAtiva = {
@@ -70,6 +71,16 @@ function obterCodigoErroBanco(erro: unknown): string | null {
  */
 export async function GET(request: NextRequest) {
     try {
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "usuario",
+            acao: "visualizar",
+        });
+
+        if (respostaPermissao) {
+            return respostaPermissao;
+        }
+
         const idUsuarioAutenticado = obterIdUsuarioAutenticado(request);
 
         if (!idUsuarioAutenticado) {
@@ -213,6 +224,16 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
     try {
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "usuario",
+            acao: "criar",
+        });
+
+        if (respostaPermissao) {
+            return respostaPermissao;
+        }
+
         const idUsuarioAutenticado = obterIdUsuarioAutenticado(request);
 
         if (!idUsuarioAutenticado) {
@@ -337,6 +358,16 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
     try {
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "usuario",
+            acao: "atualizar",
+        });
+
+        if (respostaPermissao) {
+            return respostaPermissao;
+        }
+
         const idUsuarioAutenticado = obterIdUsuarioAutenticado(request);
 
         if (!idUsuarioAutenticado) {
@@ -420,6 +451,16 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
     try {
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "usuario",
+            acao: "deletar",
+        });
+
+        if (respostaPermissao) {
+            return respostaPermissao;
+        }
+
         const idUsuarioAutenticado = obterIdUsuarioAutenticado(request);
 
         if (!idUsuarioAutenticado) {
