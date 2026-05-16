@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
 import { normalizarCampoOpcional, validarEmail, validarStringComConteudo } from "@/utils/validacoes";
 import { criarHash } from "@/utils/criptografia";
+import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
+import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
 
@@ -30,6 +32,7 @@ type CadastroUsuarioBody = {
     telefone?: string;
     documento?: string;
     perfilId?: unknown;
+    empresaNavegacaoId?: unknown;
 };
 
 type AtualizacaoUsuarioBody = CadastroUsuarioBody & {
@@ -43,6 +46,10 @@ function normalizarPerfilId(valor: unknown): number | null {
         return null;
     }
 
+    return Number(valor);
+}
+
+function normalizarIdEmpresaNavegacao(valor: unknown): number {
     return Number(valor);
 }
 
@@ -60,6 +67,21 @@ export async function GET(request: NextRequest) {
 
         if (respostaPermissao) {
             return respostaPermissao;
+        }
+
+        const empresaNavegacaoId = normalizarIdEmpresaNavegacao(request.nextUrl.searchParams.get("empresaNavegacaoId"));
+
+        if (!Number.isInteger(empresaNavegacaoId) || empresaNavegacaoId <= 0) {
+            return criarRespostaApi(false, "Informe uma empresa de navegação válida.", null, 400);
+        }
+
+        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
+            request: request,
+            idEmpresa: empresaNavegacaoId,
+        });
+
+        if (!empresaPertenceAoUsuario) {
+            return criarRespostaApi(false, "Você não possui vínculo com a empresa de navegação.", null, 403);
         }
 
         const id = Number(request.nextUrl.searchParams.get("id"));
@@ -80,11 +102,13 @@ export async function GET(request: NextRequest) {
                         u.criado_em,
                         u.atualizado_em
                     from usuarios u
+                    inner join usuarios_empresas ue on ue.usuario_id = u.id
                     left join perfil p on p.id = u.perfil_id
                     where u.id = $1
+                        and ue.empresa_id = $2
                     limit 1
                 `,
-                [id]
+                [id, empresaNavegacaoId]
             );
 
             const usuario = resultadoUsuario.rows[0];
@@ -109,9 +133,12 @@ export async function GET(request: NextRequest) {
                     u.ativo,
                     u.criado_em
                 from usuarios u
+                inner join usuarios_empresas ue on ue.usuario_id = u.id
                 left join perfil p on p.id = u.perfil_id
+                where ue.empresa_id = $1
                 order by u.criado_em desc
-            `
+            `,
+            [empresaNavegacaoId]
         );
 
         return criarRespostaApi(true, "Usuários listados com sucesso.", resultado.rows);
@@ -137,6 +164,26 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json() as CadastroUsuarioBody;
+        const empresaNavegacaoId = normalizarIdEmpresaNavegacao(body.empresaNavegacaoId);
+
+        if (!Number.isInteger(empresaNavegacaoId) || empresaNavegacaoId <= 0) {
+            return criarRespostaApi(false, "Informe uma empresa de navegação válida.", null, 400);
+        }
+
+        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
+            request: request,
+            idEmpresa: empresaNavegacaoId,
+        });
+
+        if (!empresaPertenceAoUsuario) {
+            return criarRespostaApi(false, "Você não possui vínculo com a empresa de navegação.", null, 403);
+        }
+
+        const idUsuarioCriador = obterIdUsuarioAutenticado(request);
+
+        if (!idUsuarioCriador) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
 
         const nome = validarStringComConteudo(body.nome) ? body.nome.trim() : "";
         const email = validarStringComConteudo(body.email) ? body.email.trim().toLowerCase() : "";
@@ -160,7 +207,7 @@ export async function POST(request: NextRequest) {
 
         const senhaCriptografada = criarHash(senha);
 
-        await consultarBancoDados(
+        const resultadoUsuario = await consultarBancoDados<{ id: number }>(
             `
                 insert into usuarios (
                     nome,
@@ -169,9 +216,11 @@ export async function POST(request: NextRequest) {
                     salt,
                     telefone,
                     documento,
-                    perfil_id
+                    perfil_id,
+                    empresa_padrao
                 )
-                values ($1, $2, $3, $4, $5, $6, $7)
+                values ($1, $2, $3, $4, $5, $6, $7, $8)
+                returning id
             `,
             [
                 nome,
@@ -181,7 +230,21 @@ export async function POST(request: NextRequest) {
                 telefone,
                 documento,
                 perfilId,
+                empresaNavegacaoId,
             ]
+        );
+
+        await consultarBancoDados(
+            `
+                insert into usuarios_empresas (
+                    usuario_id,
+                    empresa_id,
+                    criado_por
+                )
+                values ($1, $2, $3)
+                on conflict (usuario_id, empresa_id) do nothing
+            `,
+            [resultadoUsuario.rows[0].id, empresaNavegacaoId, idUsuarioCriador]
         );
 
         return criarRespostaApi(true, "Usuário cadastrado com sucesso.", null, 201);
@@ -219,6 +282,20 @@ export async function PUT(request: NextRequest) {
         }
 
         const body = await request.json() as AtualizacaoUsuarioBody;
+        const empresaNavegacaoId = normalizarIdEmpresaNavegacao(body.empresaNavegacaoId);
+
+        if (!Number.isInteger(empresaNavegacaoId) || empresaNavegacaoId <= 0) {
+            return criarRespostaApi(false, "Informe uma empresa de navegação válida.", null, 400);
+        }
+
+        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
+            request: request,
+            idEmpresa: empresaNavegacaoId,
+        });
+
+        if (!empresaPertenceAoUsuario) {
+            return criarRespostaApi(false, "Você não possui vínculo com a empresa de navegação.", null, 403);
+        }
 
         const id = typeof body.id === "number" ? body.id : Number(body.id);
         const nome = validarStringComConteudo(body.nome) ? body.nome.trim() : "";
@@ -272,6 +349,12 @@ export async function PUT(request: NextRequest) {
                     salt = coalesce($9, salt),
                     atualizado_em = now()
                 where id = $10
+                    and exists (
+                        select 1
+                        from usuarios_empresas ue
+                        where ue.usuario_id = usuarios.id
+                            and ue.empresa_id = $11
+                    )
                 returning id
             `,
             [
@@ -285,6 +368,7 @@ export async function PUT(request: NextRequest) {
                 senhaCriptografada?.hash ?? null,
                 senhaCriptografada?.salt ?? null,
                 id,
+                empresaNavegacaoId,
             ]
         );
 

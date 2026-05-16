@@ -1,8 +1,10 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
+import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { criptografarValor, descriptografarValor } from "@/utils/criptografiaReversivel";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
+import { verificarUsuarioAdministrador } from "@/utils/usuarioAdmin";
 import { validarEmail, validarStringComConteudo } from "@/utils/validacoes";
 
 type ConfiguracaoAplicacaoBanco = {
@@ -82,6 +84,18 @@ export async function GET(request: NextRequest) {
             return respostaPermissao;
         }
 
+        const idUsuario = obterIdUsuarioAutenticado(request);
+
+        if (!idUsuario) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuario);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem acessar as configurações.", null, 403);
+        }
+
         const resultado = await consultarBancoDados<ConfiguracaoAplicacaoBanco>(
             `
                 select
@@ -129,6 +143,18 @@ export async function PUT(request: NextRequest) {
 
         if (respostaPermissao) {
             return respostaPermissao;
+        }
+
+        const idUsuario = obterIdUsuarioAutenticado(request);
+
+        if (!idUsuario) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuario);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem atualizar as configurações.", null, 403);
         }
 
         const body = await request.json() as AtualizacaoConfiguracaoBody;

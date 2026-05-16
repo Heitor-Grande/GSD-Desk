@@ -189,6 +189,7 @@ export default function BarraLateral() {
 
         setEmpresaSelecionada(opcao);
         localStorage.setItem(CHAVE_EMPRESA_NAVEGACAO, opcao.value);
+        window.location.reload();
     }
 
     /**

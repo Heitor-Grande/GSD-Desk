@@ -19,6 +19,8 @@ type UsuarioTabela = {
     criado_em: string;
 };
 
+const CHAVE_EMPRESA_NAVEGACAO = "empresaNavegacaoId";
+
 /**
  * Página de listagem de usuários.
  * Use como referência para telas de cadastro que precisam consumir API e renderizar a TabelaDados.
@@ -68,7 +70,15 @@ export default function PaginaUsuarios() {
         setMensagemResposta("");
 
         try {
-            const resposta = await requisitarAPI("/api/usuarios", {
+            const empresaNavegacaoId = localStorage.getItem(CHAVE_EMPRESA_NAVEGACAO);
+
+            if (!empresaNavegacaoId) {
+                setUsuarios([]);
+                setMensagemResposta("Selecione uma empresa de navegação.");
+                return;
+            }
+
+            const resposta = await requisitarAPI(`/api/usuarios?empresaNavegacaoId=${empresaNavegacaoId}`, {
                 method: "GET",
             });
 

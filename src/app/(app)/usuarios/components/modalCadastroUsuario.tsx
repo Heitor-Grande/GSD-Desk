@@ -58,6 +58,8 @@ interface ModalCadastroUsuarioProps {
     aoFechar: () => void;
 }
 
+const CHAVE_EMPRESA_NAVEGACAO = "empresaNavegacaoId";
+
 const estadoInicialFormulario: DadosCadastroUsuario = {
     id: null,
     nome: "",
@@ -110,6 +112,10 @@ function mapearUsuarioParaFormulario(usuario: UsuarioDetalhadoApi): DadosCadastr
  * Modal local de cadastro e visualização de usuário.
  * Use no fluxo de usuários para cadastrar novos registros, editar dados e vincular um perfil.
  */
+function obterEmpresaNavegacaoSelecionada(): string | null {
+    return localStorage.getItem(CHAVE_EMPRESA_NAVEGACAO);
+}
+
 export default function ModalCadastroUsuario({
     aberto,
     idUsuario,
@@ -166,7 +172,14 @@ export default function ModalCadastroUsuario({
         setMensagemResposta("");
 
         try {
-            const resposta = await requisitarAPI(`/api/usuarios?id=${idUsuario}`, {
+            const empresaNavegacaoId = obterEmpresaNavegacaoSelecionada();
+
+            if (!empresaNavegacaoId) {
+                setMensagemResposta("Selecione uma empresa de navegação.");
+                return;
+            }
+
+            const resposta = await requisitarAPI(`/api/usuarios?id=${idUsuario}&empresaNavegacaoId=${empresaNavegacaoId}`, {
                 method: "GET",
             });
 
@@ -205,10 +218,18 @@ export default function ModalCadastroUsuario({
         setTextoCarregamento(estaVisualizandoUsuario ? "Atualizando usuário..." : "Cadastrando usuário...");
 
         try {
+            const empresaNavegacaoId = obterEmpresaNavegacaoSelecionada();
+
+            if (!empresaNavegacaoId) {
+                setMensagemResposta("Selecione uma empresa de navegação.");
+                return;
+            }
+
             const resposta = await requisitarAPI("/api/usuarios", {
                 method: estaVisualizandoUsuario ? "PUT" : "POST",
                 body: {
                     id: formulario.id,
+                    empresaNavegacaoId,
                     nome: formulario.nome,
                     email: formulario.email,
                     telefone: formulario.telefone,
