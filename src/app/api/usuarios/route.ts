@@ -430,7 +430,11 @@ export async function DELETE(request: NextRequest) {
         }
 
         return criarRespostaApi(true, "Usuário excluído com sucesso.", null);
-    } catch {
+    } catch (erro) {
+        if (erro instanceof Error && "code" in erro && erro.code === "23503") {
+            return criarRespostaApi(false, "Não é possível excluir este usuário porque ele possui vínculos.", null, 400);
+        }
+
         return criarRespostaApi(false, "Não foi possível excluir o usuário.", null, 500);
     }
 }

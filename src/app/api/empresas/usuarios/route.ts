@@ -3,6 +3,7 @@ import { consultarBancoDados } from "@/services/database";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
+import { verificarUsuarioAdministrador } from "@/utils/usuarioAdmin";
 
 type EntidadeAtiva = {
     id: number;
@@ -35,11 +36,6 @@ type EmpresaDisponivel = {
     id: number;
     fantasia: string;
     cnpj: string;
-};
-
-type EmpresaPadraoUsuario = {
-    empresa_padrao: number | null;
-    total_empresas_ativas: number;
 };
 
 type VinculoRemovido = {
@@ -85,6 +81,12 @@ export async function GET(request: NextRequest) {
 
         if (!idUsuarioAutenticado) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem visualizar vínculos.", null, 403);
         }
 
         const empresaId = Number(request.nextUrl.searchParams.get("empresaId"));
@@ -240,6 +242,12 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem criar vínculos.", null, 403);
+        }
+
         const body = await request.json() as VinculoUsuarioEmpresaBody;
         const empresaId = normalizarId(body.empresaId);
         const usuarioId = normalizarId(body.usuarioId);
@@ -291,23 +299,6 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Este usuário já está vinculado à empresa.", null, 409);
         }
 
-        const resultadoEmpresaPadrao = await consultarBancoDados<EmpresaPadraoUsuario>(
-            `
-                select
-                    u.empresa_padrao,
-                    count(e.id)::int as total_empresas_ativas
-                from usuarios u
-                left join usuarios_empresas ue on ue.usuario_id = u.id
-                left join empresas e on e.id = ue.empresa_id
-                    and e.ativo = true
-                where u.id = $1
-                group by u.id,
-                    u.empresa_padrao
-            `,
-            [usuarioId]
-        );
-        const dadosEmpresaPadrao = resultadoEmpresaPadrao.rows[0];
-
         await consultarBancoDados(
             `
                 insert into usuarios_empresas (
@@ -320,17 +311,16 @@ export async function POST(request: NextRequest) {
             [usuarioId, empresaId, idUsuarioAutenticado]
         );
 
-        if (!dadosEmpresaPadrao?.empresa_padrao || dadosEmpresaPadrao.total_empresas_ativas === 0) {
-            await consultarBancoDados(
-                `
-                    update usuarios
-                    set empresa_padrao = $1,
-                        atualizado_em = now()
-                    where id = $2
-                `,
-                [empresaId, usuarioId]
-            );
-        }
+        await consultarBancoDados(
+            `
+                update usuarios
+                set empresa_padrao = $1,
+                    atualizado_em = now()
+                where id = $2
+                    and empresa_padrao is null
+            `,
+            [empresaId, usuarioId]
+        );
 
         return criarRespostaApi(true, "Vínculo criado com sucesso.", null, 201);
     } catch (erro) {
@@ -372,6 +362,12 @@ export async function PATCH(request: NextRequest) {
 
         if (!idUsuarioAutenticado) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem editar vínculos.", null, 403);
         }
 
         const body = await request.json() as VinculoUsuarioEmpresaBody;
@@ -465,6 +461,12 @@ export async function DELETE(request: NextRequest) {
 
         if (!idUsuarioAutenticado) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem remover vínculos.", null, 403);
         }
 
         const id = Number(request.nextUrl.searchParams.get("id"));
