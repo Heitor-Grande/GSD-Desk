@@ -6,6 +6,7 @@ import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
+import { verificarUsuarioAdministrador } from "@/utils/usuarioAdmin";
 
 type UsuarioListado = {
     id: number;
@@ -170,19 +171,16 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Informe uma empresa de navegação válida.", null, 400);
         }
 
-        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
-            request: request,
-            idEmpresa: empresaNavegacaoId,
-        });
-
-        if (!empresaPertenceAoUsuario) {
-            return criarRespostaApi(false, "Você não possui vínculo com a empresa de navegação.", null, 403);
-        }
-
         const idUsuarioCriador = obterIdUsuarioAutenticado(request);
 
         if (!idUsuarioCriador) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioCriador);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem cadastrar usuários.", null, 403);
         }
 
         const nome = validarStringComConteudo(body.nome) ? body.nome.trim() : "";
@@ -282,19 +280,16 @@ export async function PUT(request: NextRequest) {
         }
 
         const body = await request.json() as AtualizacaoUsuarioBody;
-        const empresaNavegacaoId = normalizarIdEmpresaNavegacao(body.empresaNavegacaoId);
+        const idUsuarioAtualizacao = obterIdUsuarioAutenticado(request);
 
-        if (!Number.isInteger(empresaNavegacaoId) || empresaNavegacaoId <= 0) {
-            return criarRespostaApi(false, "Informe uma empresa de navegação válida.", null, 400);
+        if (!idUsuarioAtualizacao) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
-        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
-            request: request,
-            idEmpresa: empresaNavegacaoId,
-        });
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAtualizacao);
 
-        if (!empresaPertenceAoUsuario) {
-            return criarRespostaApi(false, "Você não possui vínculo com a empresa de navegação.", null, 403);
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem atualizar usuários.", null, 403);
         }
 
         const id = typeof body.id === "number" ? body.id : Number(body.id);
@@ -349,12 +344,6 @@ export async function PUT(request: NextRequest) {
                     salt = coalesce($9, salt),
                     atualizado_em = now()
                 where id = $10
-                    and exists (
-                        select 1
-                        from usuarios_empresas ue
-                        where ue.usuario_id = usuarios.id
-                            and ue.empresa_id = $11
-                    )
                 returning id
             `,
             [
@@ -368,7 +357,6 @@ export async function PUT(request: NextRequest) {
                 senhaCriptografada?.hash ?? null,
                 senhaCriptografada?.salt ?? null,
                 id,
-                empresaNavegacaoId,
             ]
         );
 
@@ -408,6 +396,18 @@ export async function DELETE(request: NextRequest) {
 
         if (respostaPermissao) {
             return respostaPermissao;
+        }
+
+        const idUsuarioExclusao = obterIdUsuarioAutenticado(request);
+
+        if (!idUsuarioExclusao) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioExclusao);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem excluir usuários.", null, 403);
         }
 
         const id = Number(request.nextUrl.searchParams.get("id"));

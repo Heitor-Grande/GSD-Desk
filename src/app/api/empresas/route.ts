@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
-import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
+import { verificarUsuarioAdministrador } from "@/utils/usuarioAdmin";
 import { normalizarCampoOpcional, validarEmail, validarStringComConteudo } from "@/utils/validacoes";
 
 type EmpresaListada = {
@@ -46,19 +46,22 @@ export async function DELETE(request: NextRequest) {
             return respostaPermissao;
         }
 
+        const idUsuario = obterIdUsuarioAutenticado(request);
+
+        if (!idUsuario) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuario);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem excluir empresas.", null, 403);
+        }
+
         const id = Number(request.nextUrl.searchParams.get("id"));
 
         if (!Number.isInteger(id) || id <= 0) {
             return criarRespostaApi(false, "Informe uma empresa válida para exclusão.", null, 400);
-        }
-
-        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
-            request: request,
-            idEmpresa: id,
-        });
-
-        if (!empresaPertenceAoUsuario) {
-            return criarRespostaApi(false, "Você não possui vínculo com esta empresa.", null, 403);
         }
 
         const resultado = await consultarBancoDados<EmpresaListada>(
@@ -114,15 +117,6 @@ export async function GET(request: NextRequest) {
         const id = Number(request.nextUrl.searchParams.get("id"));
 
         if (Number.isInteger(id) && id > 0) {
-            const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
-                request: request,
-                idEmpresa: id,
-            });
-
-            if (!empresaPertenceAoUsuario) {
-                return criarRespostaApi(false, "Você não possui vínculo com esta empresa.", null, 403);
-            }
-
             const resultadoEmpresa = await consultarBancoDados<EmpresaListada>(
                 `
                     select
@@ -203,6 +197,12 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuario);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem cadastrar empresas.", null, 403);
+        }
+
         const body = await request.json() as CadastroEmpresaBody;
         const fantasia = validarStringComConteudo(body.fantasia) ? body.fantasia.trim() : "";
         const cnpj = normalizarCnpj(body.cnpj);
@@ -281,6 +281,12 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
+        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuario);
+
+        if (!usuarioAdministrador) {
+            return criarRespostaApi(false, "Apenas usuários administradores podem atualizar empresas.", null, 403);
+        }
+
         const body = await request.json() as CadastroEmpresaBody;
         const id = typeof body.id === "number" ? body.id : Number(body.id);
         const fantasia = validarStringComConteudo(body.fantasia) ? body.fantasia.trim() : "";
@@ -291,15 +297,6 @@ export async function PUT(request: NextRequest) {
 
         if (!Number.isInteger(id) || id <= 0) {
             return criarRespostaApi(false, "Informe uma empresa válida para atualização.", null, 400);
-        }
-
-        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
-            request: request,
-            idEmpresa: id,
-        });
-
-        if (!empresaPertenceAoUsuario) {
-            return criarRespostaApi(false, "Você não possui vínculo com esta empresa.", null, 403);
         }
 
         if (!fantasia || fantasia.length > 160 || cnpj.length !== 14) {
