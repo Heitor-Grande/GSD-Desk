@@ -2,17 +2,48 @@
 
 Este projeto é um **template base** criado com Next.js para acelerar o desenvolvimento de aplicações modernas utilizando boas práticas desde o início.
 
-A proposta é ter uma base pronta com estrutura organizada, componentes reutilizáveis e estilização utilizando Tailwind CSS como padrão visual. O `react-bootstrap` permanece no projeto para componentes de modal, mantendo os modais reutilizáveis já previstos no template.
+A proposta é ter uma base pronta com estrutura organizada, componentes reutilizáveis, autenticação, rotas protegidas, modais, tabelas, services e utilitários comuns para evolução em novos projetos. O template deve permanecer genérico e fácil de adaptar para diferentes domínios.
 
 ---
 
 ## Stack utilizada
 
-* Next.js
-* TypeScript
+* Next.js com App Router
+* TypeScript com `strict`
 * Tailwind CSS
 * React Bootstrap para modais
+* React Select para selects
+* React Icons para ícones
+* PostgreSQL via `pg`
+* Nodemailer para envio de e-mails
 * ESLint
+
+---
+
+## Funcionalidades da aplicação
+
+O template inclui uma base funcional para aplicações administrativas e sistemas internos, mantendo os fluxos genéricos para reaproveitamento:
+
+* Autenticação por e-mail e senha com sessão via cookie.
+* Validação de sessão por JWT em rotas protegidas.
+* Redirecionamento automático para páginas protegidas e públicas.
+* Recuperação de senha com envio de código por e-mail.
+* Rate limit em rotas sensíveis, como login e recuperação de senha.
+* Layout interno com sidebar e navegação protegida.
+* Tela inicial interna para acesso rápido às áreas principais.
+* Gestão base de usuários, perfis e vínculos de acesso.
+* Gestão base de entidades organizacionais reutilizáveis.
+* Tela de configurações gerais para parâmetros da aplicação.
+* Tela de minha conta para manutenção dos dados do usuário autenticado.
+* Rotas de API com resposta padronizada em `sucesso`, `msg` e `dados`.
+* Cliente utilitário para chamadas do frontend para a API interna.
+* Modais reutilizáveis de confirmação, resposta e carregamento.
+* Componentes reutilizáveis de botão, input, select e tabela de dados.
+* Utilitários para validações, autenticação, permissões, JWT, criptografia e respostas de API.
+* Service de banco de dados centralizado.
+* Service de e-mail centralizado.
+
+Essas funcionalidades servem como ponto de partida. Regras específicas de negócio devem ser adicionadas pela aplicação final, não diretamente no template.
 
 ---
 
@@ -60,17 +91,18 @@ src/app/cssGlobal.css
 
 ```text
 template-next/
-├── public/
+├── database/
 ├── src/
 │   ├── app/
-│   │   ├── api/          # API interna do Next.js
+│   │   ├── (app)/       # páginas internas protegidas
+│   │   ├── api/         # API interna do Next.js
 │   │   ├── layout.tsx
 │   │   ├── page.tsx
 │   │   └── cssGlobal.css
-│   ├── components/       # componentes reutilizáveis
-│   ├── services/         # integração com APIs
-│   ├── hooks/            # hooks customizados
-│   └── utils/            # funções auxiliares
+│   ├── components/      # componentes reutilizáveis
+│   ├── services/        # integrações e clientes externos
+│   ├── utils/           # funções auxiliares
+│   └── proxy.ts         # proteção de rotas
 ├── AGENTS.md
 ├── package.json
 ├── postcss.config.mjs
@@ -80,6 +112,14 @@ template-next/
 ---
 
 ## Como rodar o projeto
+
+Instale as dependências:
+
+```bash
+npm install
+```
+
+Rode o ambiente de desenvolvimento:
 
 ```bash
 npm run dev
@@ -91,15 +131,24 @@ A aplicação estará disponível em:
 http://localhost:3000
 ```
 
+Outros comandos úteis:
+
+```bash
+npm run lint
+npm run build
+```
+
 ---
 
 ## Objetivo do template
 
 Este template foi criado com foco em:
 
-* Desenvolvimento rápido com componentes prontos
-* Organização de código
-* Reutilização de componentes
-* Estilização padronizada com Tailwind CSS
-* Modais reutilizáveis com React Bootstrap
-* Escalabilidade para pequenos e médios projetos
+* Desenvolvimento rápido com funcionalidades base já estruturadas.
+* Organização por responsabilidades.
+* Reutilização de componentes, services e utils.
+* Estilização padronizada com Tailwind CSS.
+* Modais reutilizáveis com React Bootstrap.
+* Contratos consistentes entre frontend e API.
+* Segurança inicial para autenticação, sessão e rotas protegidas.
+* Escalabilidade para pequenos e médios projetos.
