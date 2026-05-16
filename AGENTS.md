@@ -137,6 +137,7 @@ Quando o template precisar de um cliente HTTP base, prefira algo simples e facil
 - Valide o corpo da requisicao, regras basicas e chamadas ao banco dentro desse `try`.
 - Centralize as respostas de erro no `catch`, tratando casos conhecidos, como violacao de unicidade, antes da resposta generica.
 - Evite multiplos `try/catch` dentro da mesma funcao de rota, salvo quando houver uma justificativa tecnica clara.
+- Em rotas de API que acessam, editam ou excluem dados de uma empresa especifica, valide primeiro a permissao geral com `verificarPermissaoAPI`. Depois de validar o id da empresa, use `verificarEmpresaPertenceAoUsuario` de `src/utils/empresaUsuario.ts` para confirmar que a empresa pertence ao usuario autenticado antes de consultar, alterar ou remover o registro.
 
 ## Rate limit
 

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
+import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
 import { normalizarCampoOpcional, validarEmail, validarStringComConteudo } from "@/utils/validacoes";
@@ -49,6 +50,15 @@ export async function DELETE(request: NextRequest) {
 
         if (!Number.isInteger(id) || id <= 0) {
             return criarRespostaApi(false, "Informe uma empresa válida para exclusão.", null, 400);
+        }
+
+        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
+            request: request,
+            idEmpresa: id,
+        });
+
+        if (!empresaPertenceAoUsuario) {
+            return criarRespostaApi(false, "Você não possui vínculo com esta empresa.", null, 403);
         }
 
         const resultado = await consultarBancoDados<EmpresaListada>(
@@ -104,6 +114,15 @@ export async function GET(request: NextRequest) {
         const id = Number(request.nextUrl.searchParams.get("id"));
 
         if (Number.isInteger(id) && id > 0) {
+            const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
+                request: request,
+                idEmpresa: id,
+            });
+
+            if (!empresaPertenceAoUsuario) {
+                return criarRespostaApi(false, "Você não possui vínculo com esta empresa.", null, 403);
+            }
+
             const resultadoEmpresa = await consultarBancoDados<EmpresaListada>(
                 `
                     select
@@ -131,20 +150,29 @@ export async function GET(request: NextRequest) {
             return criarRespostaApi(true, "Empresa carregada com sucesso.", empresa);
         }
 
+        const idUsuario = obterIdUsuarioAutenticado(request);
+
+        if (!idUsuario) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
         const resultado = await consultarBancoDados<EmpresaListada>(
             `
                 select
-                    id,
-                    fantasia,
-                    cnpj,
-                    email,
-                    telefone,
-                    ativo,
-                    criado_em,
-                    atualizado_em
-                from empresas
-                order by criado_em desc
-            `
+                    e.id,
+                    e.fantasia,
+                    e.cnpj,
+                    e.email,
+                    e.telefone,
+                    e.ativo,
+                    e.criado_em,
+                    e.atualizado_em
+                from empresas e
+                inner join usuarios_empresas ue on ue.empresa_id = e.id
+                where ue.usuario_id = $1
+                order by e.criado_em desc
+            `,
+            [idUsuario]
         );
 
         return criarRespostaApi(true, "Empresas listadas com sucesso.", resultado.rows);
@@ -263,6 +291,15 @@ export async function PUT(request: NextRequest) {
 
         if (!Number.isInteger(id) || id <= 0) {
             return criarRespostaApi(false, "Informe uma empresa válida para atualização.", null, 400);
+        }
+
+        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
+            request: request,
+            idEmpresa: id,
+        });
+
+        if (!empresaPertenceAoUsuario) {
+            return criarRespostaApi(false, "Você não possui vínculo com esta empresa.", null, 403);
         }
 
         if (!fantasia || fantasia.length > 160 || cnpj.length !== 14) {
