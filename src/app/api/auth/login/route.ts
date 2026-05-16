@@ -20,6 +20,7 @@ type UsuarioLogin = {
     salt: string;
     perfil_id: number | null;
     perfil_ativo: boolean | null;
+    empresa_padrao: number | null;
     ativo: boolean;
 };
 
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
                     salt,
                     perfil_id,
                     perfil_ativo,
+                    empresa_padrao,
                     ativo
                 from (
                     select
@@ -84,6 +86,7 @@ export async function POST(request: NextRequest) {
                         u.salt,
                         u.perfil_id,
                         p.ativo as perfil_ativo,
+                        u.empresa_padrao,
                         u.ativo
                     from usuarios u
                     left join perfil p on p.id = u.perfil_id
@@ -118,6 +121,10 @@ export async function POST(request: NextRequest) {
 
         if (!validarHash(password, usuario.senha_hash, usuario.salt)) {
             return criarRespostaCredenciaisInvalidas("E-mail ou senha inválidos.");
+        }
+
+        if (!usuario.empresa_padrao) {
+            return criarRespostaApi(false, "Usuário não possui vínculo com empresas ou não possui uma empresa padrão.", null, 403);
         }
 
         const resposta = criarRespostaApi(true, "Login realizado com sucesso.", null);
