@@ -419,7 +419,7 @@ export default function ModalCadastroPerfil({
                                         <tbody>
                                             {recursosPermissao.map((recurso) => (
                                                 <tr key={recurso.chave}>
-                                                    <td className="border-t border-slate-100 px-3 py-3 font-semibold text-slate-800">{recurso.titulo == "Perfil" || recurso.titulo == "Configuração" ? recurso.titulo + " (adm)" : recurso.titulo}</td>
+                                                    <td className="border-t border-slate-100 px-3 py-3 font-semibold text-slate-800">{recurso.titulo == "Perfil" || recurso.titulo == "Configuração" || recurso.titulo == "Usuário" || recurso.titulo == "Empresa" ? recurso.titulo + " (adm)" : recurso.titulo + " (public)"}</td>
                                                     {acoesPermissao.map((acao) => (
                                                         <td key={`${recurso.chave}-${acao.chave}`} className="border-t border-slate-100 px-3 py-3 text-center">
                                                             <input

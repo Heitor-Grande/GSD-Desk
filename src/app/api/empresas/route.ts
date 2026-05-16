@@ -245,6 +245,19 @@ export async function POST(request: NextRequest) {
             [fantasia, cnpj, email, telefone, ativo, idUsuario]
         );
 
+        await consultarBancoDados(
+            `
+                insert into usuarios_empresas (
+                    usuario_id,
+                    empresa_id,
+                    criado_por
+                )
+                values ($1, $2, $3)
+                on conflict (usuario_id, empresa_id) do nothing
+            `,
+            [idUsuario, resultado.rows[0].id, idUsuario]
+        );
+
         return criarRespostaApi(true, "Empresa cadastrada com sucesso.", resultado.rows[0], 201);
     } catch (erro) {
         if (erro instanceof SyntaxError) {
