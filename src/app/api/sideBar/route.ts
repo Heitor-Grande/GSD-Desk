@@ -16,10 +16,27 @@ type VerificacaoSideBar = {
     permissoes: PermissoesPerfil | null;
 };
 
+type EmpresaUsuarioSideBar = {
+    id: number;
+    fantasia: string;
+    cnpj: string;
+    ativo: boolean;
+    empresaPadrao: boolean;
+};
+
+type EmpresaUsuarioBanco = {
+    id: number;
+    fantasia: string;
+    cnpj: string;
+    ativo: boolean;
+    empresa_padrao: boolean;
+};
+
 type DadosVerificacaoSideBar = {
     acessoPermitido: boolean;
     fantasiaEmpresa: string;
     permissoes: PermissoesPerfil | null;
+    empresasUsuario: EmpresaUsuarioSideBar[];
 };
 
 /**
@@ -38,6 +55,7 @@ export async function GET(request: NextRequest) {
                     acessoPermitido: false,
                     fantasiaEmpresa: "",
                     permissoes: null,
+                    empresasUsuario: [],
                 },
                 401
             );
@@ -84,10 +102,38 @@ export async function GET(request: NextRequest) {
                     acessoPermitido: false,
                     fantasiaEmpresa: verificacao?.fantasia ?? "",
                     permissoes: null,
+                    empresasUsuario: [],
                 },
                 403
             );
         }
+
+        const resultadoEmpresasUsuario = await consultarBancoDados<EmpresaUsuarioBanco>(
+            `
+                select
+                    e.id,
+                    e.fantasia,
+                    e.cnpj,
+                    e.ativo,
+                    u.empresa_padrao = e.id as empresa_padrao
+                from usuarios_empresas ue
+                inner join empresas e on e.id = ue.empresa_id
+                inner join usuarios u on u.id = ue.usuario_id
+                where ue.usuario_id = $1
+                order by
+                    u.empresa_padrao = e.id desc,
+                    e.fantasia asc
+            `,
+            [idUsuario]
+        );
+
+        const empresasUsuario = resultadoEmpresasUsuario.rows.map((empresa) => ({
+            id: empresa.id,
+            fantasia: empresa.fantasia,
+            cnpj: empresa.cnpj,
+            ativo: empresa.ativo,
+            empresaPadrao: empresa.empresa_padrao,
+        }));
 
         return criarRespostaApi<DadosVerificacaoSideBar>(
             true,
@@ -96,6 +142,7 @@ export async function GET(request: NextRequest) {
                 acessoPermitido: true,
                 fantasiaEmpresa: verificacao.fantasia ?? "GSD Desk",
                 permissoes: verificacao.permissoes,
+                empresasUsuario,
             }
         );
     } catch {
@@ -107,6 +154,7 @@ export async function GET(request: NextRequest) {
                 acessoPermitido: false,
                 fantasiaEmpresa: "",
                 permissoes: null,
+                empresasUsuario: [],
             },
             500
         );
