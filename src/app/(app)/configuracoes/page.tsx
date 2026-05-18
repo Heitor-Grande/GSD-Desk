@@ -181,7 +181,7 @@ export default function PaginaConfiguracoes() {
                         <h5 className="text-lg font-bold text-slate-900">Configurações</h5>
                         <hr className="my-4 border-slate-200" />
                         <p className="mb-0 text-slate-500">
-                            Controle os dados principais da empresa, a disponibilidade da aplicação e o envio de e-mails.
+                            Controle os dados principais da Aplicação, a disponibilidade da aplicação e o envio de e-mails.
                         </p>
                     </div>
                 </div>
