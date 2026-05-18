@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
+import { enviarEmail } from "@/services/email";
 import { normalizarCampoOpcional, validarEmail, validarStringComConteudo } from "@/utils/validacoes";
 import { criarHash } from "@/utils/criptografia";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
@@ -48,6 +49,75 @@ function normalizarPerfilId(valor: unknown): number | null {
     }
 
     return Number(valor);
+}
+
+function escaparHtml(valor: string): string {
+    return valor
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * Monta o HTML do e-mail de boas-vindas enviado no cadastro do usuário.
+ * Use para informar credenciais iniciais e o link de acesso ao GSD Desk.
+ */
+function montarHtmlBoasVindasUsuario({
+    nome,
+    email,
+    senha,
+    urlAplicacao,
+}: {
+    nome: string;
+    email: string;
+    senha: string;
+    urlAplicacao: string;
+}): string {
+    const nomeSeguro = escaparHtml(nome);
+    const emailSeguro = escaparHtml(email);
+    const senhaSegura = escaparHtml(senha);
+    const urlAplicacaoSegura = escaparHtml(urlAplicacao);
+
+    return `
+        <div style="margin:0;padding:32px;background-color:#f4f7fb;font-family:Arial,sans-serif;color:#273142;">
+            <div style="max-width:560px;margin:0 auto;background-color:#ffffff;border:1px solid #dce3ec;border-radius:8px;overflow:hidden;">
+                <div style="padding:24px;background-color:#111827;color:#e5edf8;">
+                    <h1 style="margin:0;font-size:22px;line-height:1.3;">Bem-vindo ao GSD Desk</h1>
+                    <p style="margin:8px 0 0;color:#94a3b8;font-size:14px;">Seu acesso foi criado com sucesso.</p>
+                </div>
+
+                <div style="padding:28px 24px;">
+                    <p style="margin:0 0 16px;font-size:16px;line-height:1.5;">
+                        Olá, ${nomeSeguro}.
+                    </p>
+
+                    <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#6c757d;">
+                        O GSD Desk é a plataforma para organizar tickets, solicitações e rotinas de suporte da sua equipe.
+                        Use os dados abaixo para realizar seu primeiro acesso.
+                    </p>
+
+                    <div style="margin:0 0 22px;padding:18px;border:1px solid #dce3ec;border-radius:8px;background-color:#f8fafc;">
+                        <p style="margin:0 0 10px;font-size:14px;line-height:1.5;">
+                            <strong style="color:#172033;">E-mail:</strong> ${emailSeguro}
+                        </p>
+                        <p style="margin:0;font-size:14px;line-height:1.5;">
+                            <strong style="color:#172033;">Senha:</strong> ${senhaSegura}
+                        </p>
+                    </div>
+
+                    <a href="${urlAplicacaoSegura}" style="display:inline-block;margin:0 0 18px;padding:12px 18px;background-color:#0d6efd;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:bold;">
+                        Acessar GSD Desk
+                    </a>
+
+                    <p style="margin:0;color:#6c757d;font-size:13px;line-height:1.5;">
+                        Link de acesso: <a href="${urlAplicacaoSegura}" style="color:#0d6efd;">${urlAplicacaoSegura}</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function normalizarIdEmpresaNavegacao(valor: unknown): number {
@@ -244,6 +314,17 @@ export async function POST(request: NextRequest) {
             `,
             [resultadoUsuario.rows[0].id, empresaNavegacaoId, idUsuarioCriador]
         );
+
+        await enviarEmail({
+            to: email,
+            subject: "Bem-vindo ao GSD Desk",
+            html: montarHtmlBoasVindasUsuario({
+                nome: nome,
+                email: email,
+                senha: senha,
+                urlAplicacao: request.nextUrl.origin,
+            }),
+        });
 
         return criarRespostaApi(true, "Usuário cadastrado com sucesso.", null, 201);
     } catch (erro) {
