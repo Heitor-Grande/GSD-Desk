@@ -7,7 +7,7 @@ import { ModalCarregamento } from "@/components/modals/loading";
 import ModalResposta from "@/components/modals/responseModal";
 import { requisitarAPI } from "@/utils/api";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { FaBan, FaExclamationTriangle, FaPlus, FaSave, FaTimes } from "react-icons/fa";
+import { FaBan, FaEdit, FaExclamationTriangle, FaPlus, FaSave, FaTimes } from "react-icons/fa";
 
 export type Produto = {
     id: number;
@@ -67,9 +67,10 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
     const [mensagemResposta, setMensagemResposta] = useState("");
     const [mensagemValidacao, setMensagemValidacao] = useState("");
     const [idProdutoParaExcluir, setIdProdutoParaExcluir] = useState<number | null>(null);
+    const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
 
     const possuiEmpresaSalva = typeof idEmpresa === "number" && idEmpresa > 0;
-    const estaEditandoProduto = typeof formulario.id === "number" && formulario.id > 0;
+    const isEditandoProduto = produtoSelecionado !== null;
 
     const produtoSelecionadoParaExcluir = useMemo(
         () => produtos.find((produto) => produto.id === idProdutoParaExcluir) || null,
@@ -121,11 +122,13 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
 
     function limparFormularioProduto() {
         setFormulario(estadoInicialProduto);
+        setProdutoSelecionado(null);
         setMensagemValidacao("");
     }
 
     function selecionarProdutoParaEdicao(produto: Produto) {
         setFormulario(mapearProdutoParaFormulario(produto));
+        setProdutoSelecionado(produto);
         setMensagemValidacao("");
     }
 
@@ -159,12 +162,12 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
         }
 
         setCarregando(true);
-        setTextoCarregamento(estaEditandoProduto ? "Atualizando produto..." : "Cadastrando produto...");
+        setTextoCarregamento(isEditandoProduto ? "Atualizando produto..." : "Cadastrando produto...");
         setMensagemValidacao("");
 
         try {
             const resposta = await requisitarAPI("/api/empresas/produtos", {
-                method: estaEditandoProduto ? "PUT" : "POST",
+                method: isEditandoProduto ? "PUT" : "POST",
                 body: {
                     id: formulario.id,
                     empresaId: idEmpresa,
@@ -235,14 +238,32 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
 
     return (
         <section className="space-y-4">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-4">
-                    <h3 className="text-base font-bold text-slate-900">
-                        {estaEditandoProduto ? "Editar produto" : "Novo produto"}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                        Cadastre produtos vinculados somente à empresa atual.
-                    </p>
+            <div className={`rounded-xl border bg-white p-4 shadow-sm transition ${isEditandoProduto ? "border-blue-300 shadow-blue-100/70" : "border-slate-200"}`}>
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-bold text-slate-900">
+                                {isEditandoProduto ? "Editar produto" : "Novo produto"}
+                            </h3>
+                            {isEditandoProduto && (
+                                <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                                    Modo edição
+                                </span>
+                            )}
+                        </div>
+                        <p className="mt-1 text-sm text-slate-500">
+                            {isEditandoProduto
+                                ? `Editando ${produtoSelecionado?.nome || "produto selecionado"}. Salve a edição ou cancele para voltar ao cadastro.`
+                                : "Cadastre produtos vinculados somente à empresa atual."}
+                        </p>
+                    </div>
+
+                    {isEditandoProduto && (
+                        <span className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">
+                            <FaEdit />
+                            Produto selecionado
+                        </span>
+                    )}
                 </div>
 
                 <form onSubmit={salvarProduto}>
@@ -299,7 +320,7 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
                     )}
 
                     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                        {estaEditandoProduto && (
+                        {isEditandoProduto && (
                             <Botao
                                 size="sm"
                                 label="Cancelar edição"
@@ -315,8 +336,8 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
 
                         <Botao
                             size="sm"
-                            label={estaEditandoProduto ? "Salvar alterações" : "Adicionar produto"}
-                            icon={estaEditandoProduto ? <FaSave /> : <FaPlus />}
+                            label={isEditandoProduto ? "Salvar edição" : "Adicionar produto"}
+                            icon={isEditandoProduto ? <FaSave /> : <FaPlus />}
                             onClick={() => undefined}
                             disabled={carregando}
                             loading={carregando}
@@ -336,24 +357,34 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
                 ) : produtos.length > 0 ? (
                     <div className="divide-y divide-slate-200">
                         {produtos.map((produto) => (
-                            <div key={produto.id} className="flex flex-col gap-3 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
+                            <div key={produto.id} className={`flex flex-col gap-3 p-3 transition sm:flex-row sm:items-center sm:justify-between ${produtoSelecionado?.id === produto.id ? "bg-blue-50" : "bg-white"}`}>
+                                <button
+                                    type="button"
+                                    className="min-w-0 text-left disabled:cursor-not-allowed"
+                                    onClick={() => selecionarProdutoParaEdicao(produto)}
+                                    disabled={carregando}
+                                >
                                     <div className="flex flex-wrap items-center gap-2">
                                         <p className="text-sm font-semibold text-slate-900">{produto.nome}</p>
                                         <span className={`rounded-full px-2 py-1 text-xs font-semibold ${produto.ativo ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700"}`}>
                                             {produto.ativo ? "Ativo" : "Inativo"}
                                         </span>
+                                        {produtoSelecionado?.id === produto.id && (
+                                            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
+                                                Em edição
+                                            </span>
+                                        )}
                                     </div>
                                     <p className="mt-1 text-sm text-slate-500">
                                         {produto.descricao || "Sem descrição."}
                                     </p>
-                                </div>
+                                </button>
 
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                                     <Botao
                                         size="sm"
                                         label="Editar"
-                                        icon={<FaSave />}
+                                        icon={<FaEdit />}
                                         onClick={() => selecionarProdutoParaEdicao(produto)}
                                         disabled={carregando}
                                         loading={false}
