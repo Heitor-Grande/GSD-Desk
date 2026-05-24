@@ -5,7 +5,9 @@ import { CampoTexto } from "@/components/inputs/input";
 import ModalConfirmacao from "@/components/modals/confirmModal";
 import { ModalCarregamento } from "@/components/modals/loading";
 import ModalResposta from "@/components/modals/responseModal";
+import Paginacao from "@/components/Paginacao";
 import { requisitarAPI } from "@/utils/api";
+import { calcularTotalPaginas, paginarLista } from "@/utils/paginacao";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { FaBan, FaEdit, FaExclamationTriangle, FaPlus, FaSave, FaTimes } from "react-icons/fa";
 import UsuariosProduto from "./usuariosProduto";
@@ -37,6 +39,11 @@ type ProdutoApi = Omit<Produto, "id" | "empresa_id" | "criado_por"> & {
     id: number | string;
     empresa_id: number | string;
     criado_por: number | string;
+};
+
+type EstadoPaginacao = {
+    chave: string;
+    pagina: number;
 };
 
 const estadoInicialProduto: ProdutoFormulario = {
@@ -106,9 +113,20 @@ export default function ProdutosEmpresa({
     const [mensagemValidacao, setMensagemValidacao] = useState("");
     const [idProdutoParaExcluir, setIdProdutoParaExcluir] = useState<number | null>(null);
     const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
+    const [paginacaoProdutos, setPaginacaoProdutos] = useState<EstadoPaginacao>({ chave: "", pagina: 1 });
 
     const possuiEmpresaSalva = typeof idEmpresa === "number" && idEmpresa > 0;
     const isEditandoProduto = produtoSelecionado !== null;
+    const chavePaginacaoProdutos = String(idEmpresa ?? "nova");
+    const totalPaginasProdutos = calcularTotalPaginas(produtos.length);
+    const paginaProdutos = Math.min(
+        paginacaoProdutos.chave === chavePaginacaoProdutos ? paginacaoProdutos.pagina : 1,
+        totalPaginasProdutos
+    );
+    const produtosPaginados = useMemo(
+        () => paginarLista(produtos, paginaProdutos),
+        [paginaProdutos, produtos]
+    );
 
     const produtoSelecionadoParaExcluir = useMemo(
         () => produtos.find((produto) => produto.id === idProdutoParaExcluir) || null,
@@ -402,7 +420,7 @@ export default function ProdutosEmpresa({
                     </div>
                 ) : produtos.length > 0 ? (
                     <div className="divide-y divide-slate-200">
-                        {produtos.map((produto) => (
+                        {produtosPaginados.map((produto) => (
                             <div key={produto.id} className={produtoSelecionado?.id === produto.id ? "bg-blue-50" : "bg-white"}>
                                 <div className="flex flex-col gap-3 p-3 transition sm:flex-row sm:items-center sm:justify-between">
                                     <button
@@ -468,6 +486,18 @@ export default function ProdutosEmpresa({
                                 )}
                             </div>
                         ))}
+                        <Paginacao
+                            paginaAtual={paginaProdutos}
+                            totalPaginas={totalPaginasProdutos}
+                            aoVoltar={() => setPaginacaoProdutos({
+                                chave: chavePaginacaoProdutos,
+                                pagina: Math.max(1, paginaProdutos - 1),
+                            })}
+                            aoAvancar={() => setPaginacaoProdutos({
+                                chave: chavePaginacaoProdutos,
+                                pagina: Math.min(totalPaginasProdutos, paginaProdutos + 1),
+                            })}
+                        />
                     </div>
                 ) : (
                     <div className="bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">

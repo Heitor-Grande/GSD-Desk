@@ -5,7 +5,9 @@ import { Seletor } from "@/components/inputs/select";
 import ModalConfirmacao from "@/components/modals/confirmModal";
 import { ModalCarregamento } from "@/components/modals/loading";
 import ModalResposta from "@/components/modals/responseModal";
+import Paginacao from "@/components/Paginacao";
 import { requisitarAPI } from "@/utils/api";
+import { calcularTotalPaginas, paginarLista } from "@/utils/paginacao";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FaExclamationTriangle, FaPlus, FaTrash } from "react-icons/fa";
 
@@ -36,6 +38,11 @@ type UsuarioProdutoApi = {
 type OpcaoUsuarioProduto = {
     label: string;
     value: string;
+};
+
+type EstadoPaginacao = {
+    chave: string;
+    pagina: number;
 };
 
 type UsuariosProdutoProps = {
@@ -87,8 +94,19 @@ export default function UsuariosProduto({
     const [carregando, setCarregando] = useState(false);
     const [textoCarregamento, setTextoCarregamento] = useState("Carregando usuários do produto...");
     const [idVinculoParaRemover, setIdVinculoParaRemover] = useState<number | null>(null);
+    const [paginacaoUsuariosProduto, setPaginacaoUsuariosProduto] = useState<EstadoPaginacao>({ chave: "", pagina: 1 });
 
     const possuiProdutoSalvo = typeof produtoId === "number" && produtoId > 0;
+    const chavePaginacaoProduto = String(produtoId ?? "novo");
+    const totalPaginasUsuariosProduto = calcularTotalPaginas(usuariosVinculados.length);
+    const paginaUsuariosProduto = Math.min(
+        paginacaoUsuariosProduto.chave === chavePaginacaoProduto ? paginacaoUsuariosProduto.pagina : 1,
+        totalPaginasUsuariosProduto
+    );
+    const usuariosVinculadosPaginados = useMemo(
+        () => paginarLista(usuariosVinculados, paginaUsuariosProduto),
+        [paginaUsuariosProduto, usuariosVinculados]
+    );
     const opcaoSelecionada = useMemo(
         () => opcoesUsuarios.find((opcao) => Number(opcao.value) === formulario.usuarioId) || null,
         [formulario.usuarioId, opcoesUsuarios]
@@ -274,7 +292,7 @@ export default function UsuariosProduto({
                 <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
                     {usuariosVinculados.length > 0 ? (
                         <div className="divide-y divide-slate-200">
-                            {usuariosVinculados.map((usuario) => (
+                            {usuariosVinculadosPaginados.map((usuario) => (
                                 <div key={usuario.id} className="flex flex-col gap-3 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <p className="text-sm font-semibold text-slate-900">{usuario.nome}</p>
@@ -294,6 +312,18 @@ export default function UsuariosProduto({
                                     />
                                 </div>
                             ))}
+                            <Paginacao
+                                paginaAtual={paginaUsuariosProduto}
+                                totalPaginas={totalPaginasUsuariosProduto}
+                                aoVoltar={() => setPaginacaoUsuariosProduto({
+                                    chave: chavePaginacaoProduto,
+                                    pagina: Math.max(1, paginaUsuariosProduto - 1),
+                                })}
+                                aoAvancar={() => setPaginacaoUsuariosProduto({
+                                    chave: chavePaginacaoProduto,
+                                    pagina: Math.min(totalPaginasUsuariosProduto, paginaUsuariosProduto + 1),
+                                })}
+                            />
                         </div>
                     ) : (
                         <div className="bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">

@@ -5,7 +5,9 @@ import { Seletor } from "@/components/inputs/select";
 import ModalConfirmacao from "@/components/modals/confirmModal";
 import { ModalCarregamento } from "@/components/modals/loading";
 import ModalResposta from "@/components/modals/responseModal";
+import Paginacao from "@/components/Paginacao";
 import { requisitarAPI } from "@/utils/api";
+import { calcularTotalPaginas, paginarLista } from "@/utils/paginacao";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FaCheckCircle, FaExclamationTriangle, FaPlus, FaTrash } from "react-icons/fa";
 
@@ -68,6 +70,11 @@ type EmpresaDisponivelApi = {
     cnpj: string;
 };
 
+type EstadoPaginacao = {
+    chave: string;
+    pagina: number;
+};
+
 function obterListaDados<TipoItem>(dados: unknown): TipoItem[] {
     return Array.isArray(dados) ? dados as TipoItem[] : [];
 }
@@ -127,6 +134,8 @@ export default function VinculoUsuarioEmpresa({
     const [textoCarregamento, setTextoCarregamento] = useState("Carregando vínculos...");
     const [idVinculoParaRemover, setIdVinculoParaRemover] = useState<number | null>(null);
     const [idEmpresaPadraoParaConfirmar, setIdEmpresaPadraoParaConfirmar] = useState<number | null>(null);
+    const [paginacaoUsuariosVinculados, setPaginacaoUsuariosVinculados] = useState<EstadoPaginacao>({ chave: "", pagina: 1 });
+    const [paginacaoEmpresasVinculadas, setPaginacaoEmpresasVinculadas] = useState<EstadoPaginacao>({ chave: "", pagina: 1 });
 
     const estaNoFormularioEmpresa = form === "empresa";
     const idContexto = estaNoFormularioEmpresa ? idEmpresa : idUsuario;
@@ -142,6 +151,7 @@ export default function VinculoUsuarioEmpresa({
     const textoEstadoVazio = estaNoFormularioEmpresa
         ? "Nenhum usuário vinculado a esta empresa."
         : "Nenhuma empresa vinculada a este usuário.";
+    const chavePaginacao = `${form}-${idContexto ?? "novo"}`;
 
     const opcoesDisponiveis = useMemo(() => (
         estaNoFormularioEmpresa ? opcoesUsuarios : opcoesEmpresas
@@ -150,6 +160,24 @@ export default function VinculoUsuarioEmpresa({
     const possuiVinculos = estaNoFormularioEmpresa
         ? usuariosVinculados.length > 0
         : empresasVinculadas.length > 0;
+    const totalPaginasUsuarios = calcularTotalPaginas(usuariosVinculados.length);
+    const totalPaginasEmpresas = calcularTotalPaginas(empresasVinculadas.length);
+    const paginaUsuariosVinculados = Math.min(
+        paginacaoUsuariosVinculados.chave === chavePaginacao ? paginacaoUsuariosVinculados.pagina : 1,
+        totalPaginasUsuarios
+    );
+    const paginaEmpresasVinculadas = Math.min(
+        paginacaoEmpresasVinculadas.chave === chavePaginacao ? paginacaoEmpresasVinculadas.pagina : 1,
+        totalPaginasEmpresas
+    );
+    const usuariosVinculadosPaginados = useMemo(
+        () => paginarLista(usuariosVinculados, paginaUsuariosVinculados),
+        [paginaUsuariosVinculados, usuariosVinculados]
+    );
+    const empresasVinculadasPaginadas = useMemo(
+        () => paginarLista(empresasVinculadas, paginaEmpresasVinculadas),
+        [empresasVinculadas, paginaEmpresasVinculadas]
+    );
 
     const carregarVinculos = useCallback(async () => {
         if (!possuiContextoSalvo) {
@@ -411,7 +439,7 @@ export default function VinculoUsuarioEmpresa({
                 ) : possuiVinculos ? (
                     <div className="divide-y divide-slate-200">
                         {estaNoFormularioEmpresa
-                            ? usuariosVinculados.map((usuario) => (
+                            ? usuariosVinculadosPaginados.map((usuario) => (
                                 <div key={usuario.vinculoId} className="flex flex-col gap-3 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <div className="flex flex-wrap items-center gap-2">
@@ -438,7 +466,7 @@ export default function VinculoUsuarioEmpresa({
                                     />
                                 </div>
                             ))
-                            : empresasVinculadas.map((empresa) => (
+                            : empresasVinculadasPaginadas.map((empresa) => (
                                 <div key={empresa.vinculoId} className="flex flex-col gap-3 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <div className="flex flex-wrap items-center gap-2">
@@ -481,6 +509,33 @@ export default function VinculoUsuarioEmpresa({
                                     </div>
                                 </div>
                             ))}
+                        {estaNoFormularioEmpresa ? (
+                            <Paginacao
+                                paginaAtual={paginaUsuariosVinculados}
+                                totalPaginas={totalPaginasUsuarios}
+                                aoVoltar={() => setPaginacaoUsuariosVinculados({
+                                    chave: chavePaginacao,
+                                    pagina: Math.max(1, paginaUsuariosVinculados - 1),
+                                })}
+                                aoAvancar={() => setPaginacaoUsuariosVinculados({
+                                    chave: chavePaginacao,
+                                    pagina: Math.min(totalPaginasUsuarios, paginaUsuariosVinculados + 1),
+                                })}
+                            />
+                        ) : (
+                            <Paginacao
+                                paginaAtual={paginaEmpresasVinculadas}
+                                totalPaginas={totalPaginasEmpresas}
+                                aoVoltar={() => setPaginacaoEmpresasVinculadas({
+                                    chave: chavePaginacao,
+                                    pagina: Math.max(1, paginaEmpresasVinculadas - 1),
+                                })}
+                                aoAvancar={() => setPaginacaoEmpresasVinculadas({
+                                    chave: chavePaginacao,
+                                    pagina: Math.min(totalPaginasEmpresas, paginaEmpresasVinculadas + 1),
+                                })}
+                            />
+                        )}
                     </div>
                 ) : (
                     <div className="bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
