@@ -96,6 +96,7 @@ Campos:
 - `email`: e-mail opcional.
 - `telefone`: telefone opcional.
 - `ativo`: status da empresa.
+- `exigir_vinculo_produto`: define se usuários de suporte precisam estar vinculados aos produtos da empresa.
 - `criado_em`: data de criação.
 - `atualizado_em`: data da última atualização.
 - `criado_por`: usuário que criou a empresa.

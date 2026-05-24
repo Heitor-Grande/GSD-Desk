@@ -13,6 +13,7 @@ type EmpresaListada = {
     email: string | null;
     telefone: string | null;
     ativo: boolean;
+    exigir_vinculo_produto: boolean;
     criado_em: Date;
     atualizado_em: Date;
 };
@@ -24,6 +25,7 @@ type CadastroEmpresaBody = {
     email?: unknown;
     telefone?: unknown;
     ativo?: unknown;
+    exigirVinculoProduto?: unknown;
 };
 
 function normalizarCnpj(valor: unknown): string {
@@ -78,6 +80,7 @@ export async function DELETE(request: NextRequest) {
                     email,
                     telefone,
                     ativo,
+                    exigir_vinculo_produto,
                     criado_em,
                     atualizado_em
             `,
@@ -126,6 +129,7 @@ export async function GET(request: NextRequest) {
                         email,
                         telefone,
                         ativo,
+                        exigir_vinculo_produto,
                         criado_em,
                         atualizado_em
                     from empresas
@@ -159,6 +163,7 @@ export async function GET(request: NextRequest) {
                     e.email,
                     e.telefone,
                     e.ativo,
+                    e.exigir_vinculo_produto,
                     e.criado_em,
                     e.atualizado_em
                 from empresas e
@@ -209,6 +214,9 @@ export async function POST(request: NextRequest) {
         const email = normalizarCampoOpcional(body.email)?.toLowerCase() ?? null;
         const telefone = normalizarCampoOpcional(body.telefone);
         const ativo = obterBooleanoAtivo(body.ativo);
+        const exigirVinculoProduto = typeof body.exigirVinculoProduto === "boolean"
+            ? body.exigirVinculoProduto
+            : false;
 
         if (!fantasia || fantasia.length > 160 || cnpj.length !== 14) {
             return criarRespostaApi(false, "Informe nome da empresa e CNPJ com 14 dígitos.", null, 400);
@@ -230,19 +238,21 @@ export async function POST(request: NextRequest) {
                     email,
                     telefone,
                     ativo,
+                    exigir_vinculo_produto,
                     criado_por
                 )
-                values ($1, $2, $3, $4, $5, $6)
+                values ($1, $2, $3, $4, $5, $6, $7)
                 returning id,
                     fantasia,
                     cnpj,
                     email,
                     telefone,
                     ativo,
+                    exigir_vinculo_produto,
                     criado_em,
                     atualizado_em
             `,
-            [fantasia, cnpj, email, telefone, ativo, idUsuario]
+            [fantasia, cnpj, email, telefone, ativo, exigirVinculoProduto, idUsuario]
         );
 
         await consultarBancoDados(
@@ -307,6 +317,9 @@ export async function PUT(request: NextRequest) {
         const email = normalizarCampoOpcional(body.email)?.toLowerCase() ?? null;
         const telefone = normalizarCampoOpcional(body.telefone);
         const ativo = obterBooleanoAtivo(body.ativo);
+        const exigirVinculoProduto = typeof body.exigirVinculoProduto === "boolean"
+            ? body.exigirVinculoProduto
+            : false;
 
         if (!Number.isInteger(id) || id <= 0) {
             return criarRespostaApi(false, "Informe uma empresa válida para atualização.", null, 400);
@@ -333,19 +346,21 @@ export async function PUT(request: NextRequest) {
                     email = $3,
                     telefone = $4,
                     ativo = $5,
-                    atualizado_por = $6,
+                    exigir_vinculo_produto = $6,
+                    atualizado_por = $7,
                     atualizado_em = now()
-                where id = $7
+                where id = $8
                 returning id,
                     fantasia,
                     cnpj,
                     email,
                     telefone,
                     ativo,
+                    exigir_vinculo_produto,
                     criado_em,
                     atualizado_em
             `,
-            [fantasia, cnpj, email, telefone, ativo, idUsuario, id]
+            [fantasia, cnpj, email, telefone, ativo, exigirVinculoProduto, idUsuario, id]
         );
 
         if (!resultado.rows[0]) {

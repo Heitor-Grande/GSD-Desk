@@ -16,6 +16,7 @@ type EmpresaTabela = {
     email: string | null;
     telefone: string | null;
     ativo: boolean;
+    exigir_vinculo_produto: boolean;
     criado_em: string;
     atualizado_em: string;
 };

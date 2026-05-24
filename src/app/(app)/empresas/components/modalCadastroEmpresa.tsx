@@ -9,7 +9,7 @@ import ModalResposta from "@/components/modals/responseModal";
 import { requisitarAPI } from "@/utils/api";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Modal } from "react-bootstrap";
-import { FaExclamationTriangle, FaSave, FaTimes, FaTrash } from "react-icons/fa";
+import { FaExclamationTriangle, FaInfoCircle, FaSave, FaTimes, FaTrash } from "react-icons/fa";
 import ProdutosEmpresa from "./produtosEmpresa";
 
 type DadosCadastroEmpresa = {
@@ -19,6 +19,7 @@ type DadosCadastroEmpresa = {
     email: string;
     telefone: string;
     ativo: boolean;
+    exigirVinculoProduto: boolean;
     criadoEm: string;
     atualizadoEm: string;
 };
@@ -30,6 +31,7 @@ type EmpresaDetalhadaApi = {
     email: string | null;
     telefone: string | null;
     ativo: boolean;
+    exigir_vinculo_produto: boolean;
     criado_em: string;
     atualizado_em: string;
 };
@@ -40,7 +42,7 @@ type ModalCadastroEmpresaProps = {
     aoFechar: () => void;
 };
 
-type AbaEmpresa = "dados" | "usuarios" | "produtos";
+type AbaEmpresa = "dados" | "usuarios" | "produtos" | "regras";
 
 const estadoInicialFormulario: DadosCadastroEmpresa = {
     id: null,
@@ -49,6 +51,7 @@ const estadoInicialFormulario: DadosCadastroEmpresa = {
     email: "",
     telefone: "",
     ativo: true,
+    exigirVinculoProduto: false,
     criadoEm: "",
     atualizadoEm: "",
 };
@@ -82,6 +85,7 @@ function mapearEmpresaParaFormulario(empresa: EmpresaDetalhadaApi): DadosCadastr
         email: empresa.email || "",
         telefone: empresa.telefone || "",
         ativo: empresa.ativo,
+        exigirVinculoProduto: empresa.exigir_vinculo_produto,
         criadoEm: formatarDataHoraFormulario(empresa.criado_em),
         atualizadoEm: formatarDataHoraFormulario(empresa.atualizado_em),
     };
@@ -156,8 +160,7 @@ export default function ModalCadastroEmpresa({
         aoFechar();
     }
 
-    async function cadastrarEmpresa(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
+    async function salvarEmpresa() {
         setCarregando(true);
         setTextoCarregamento(estaVisualizandoEmpresa ? "Atualizando empresa..." : "Cadastrando empresa...");
         setMensagemResposta("");
@@ -172,6 +175,7 @@ export default function ModalCadastroEmpresa({
                     email: formulario.email,
                     telefone: formulario.telefone,
                     ativo: formulario.ativo,
+                    exigirVinculoProduto: formulario.exigirVinculoProduto,
                 },
             });
 
@@ -185,6 +189,11 @@ export default function ModalCadastroEmpresa({
         } finally {
             setCarregando(false);
         }
+    }
+
+    async function cadastrarEmpresa(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        await salvarEmpresa();
     }
 
     async function deletarEmpresa() {
@@ -279,6 +288,13 @@ export default function ModalCadastroEmpresa({
                             onClick={() => setAbaAtiva("produtos")}
                         >
                             Produtos
+                        </button>
+                        <button
+                            type="button"
+                            className={obterClassesAba("regras")}
+                            onClick={() => setAbaAtiva("regras")}
+                        >
+                            Regras
                         </button>
                     </div>
 
@@ -405,10 +421,47 @@ export default function ModalCadastroEmpresa({
                     {abaAtiva === "produtos" && (
                         <ProdutosEmpresa idEmpresa={idEmpresa} />
                     )}
+
+                    {abaAtiva === "regras" && (
+                        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="mb-4">
+                                <h3 className="text-base font-bold text-slate-900">Regras operacionais</h3>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Configure comportamentos aplicados aos fluxos da empresa.
+                                </p>
+                            </div>
+
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <div className="flex items-start gap-3">
+                                    <input
+                                        id="empresa-exigir-vinculo-produto"
+                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                        type="checkbox"
+                                        checked={formulario.exigirVinculoProduto}
+                                        disabled={carregando}
+                                        onChange={(event) => atualizarCampoFormulario("exigirVinculoProduto", event.target.checked)}
+                                    />
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <label className="text-sm font-semibold text-slate-800" htmlFor="empresa-exigir-vinculo-produto">
+                                                Exigir vínculo de usuários aos produtos
+                                            </label>
+                                            <span
+                                                className="inline-flex cursor-help text-slate-500"
+                                                title="Quando habilitado, usuários de suporte visualizarão apenas os produtos vinculados a eles. Quando desabilitado, todos os usuários de suporte poderão atender todos os produtos da empresa."
+                                            >
+                                                <FaInfoCircle aria-hidden="true" />
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </Modal.Body>
 
                 <Modal.Footer>
-                    {abaAtiva === "dados" ? (
+                    {abaAtiva === "dados" || abaAtiva === "regras" ? (
                         <>
                         {estaVisualizandoEmpresa && (
                             <Botao
@@ -440,13 +493,17 @@ export default function ModalCadastroEmpresa({
                             size="sm"
                             label={estaVisualizandoEmpresa ? "Salvar alterações" : "Salvar empresa"}
                             icon={<FaSave />}
-                            onClick={() => undefined}
+                            onClick={() => {
+                                if (abaAtiva === "regras") {
+                                    void salvarEmpresa();
+                                }
+                            }}
                             disabled={carregando}
                             loading={carregando}
                             variant="outline-primary"
-                            type="submit"
+                            type={abaAtiva === "dados" ? "submit" : "button"}
                             className=""
-                            form="formulario-cadastro-empresa"
+                            form={abaAtiva === "dados" ? "formulario-cadastro-empresa" : undefined}
                         />
                         </>
                     ) : (

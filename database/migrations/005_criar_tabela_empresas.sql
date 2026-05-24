@@ -5,6 +5,7 @@ create table if not exists public.empresas (
     email varchar(180) null,
     telefone varchar(20) null,
     ativo boolean default true not null,
+    exigir_vinculo_produto boolean default false not null,
     criado_em timestamptz default now() not null,
     atualizado_em timestamptz default now() not null,
     criado_por bigint not null,

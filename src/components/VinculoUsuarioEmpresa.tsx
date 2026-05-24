@@ -3,6 +3,7 @@
 import { Botao } from "@/components/inputs/button";
 import { Seletor } from "@/components/inputs/select";
 import ModalConfirmacao from "@/components/modals/confirmModal";
+import { ModalCarregamento } from "@/components/modals/loading";
 import ModalResposta from "@/components/modals/responseModal";
 import { requisitarAPI } from "@/utils/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -123,6 +124,7 @@ export default function VinculoUsuarioEmpresa({
     const [mensagemValidacao, setMensagemValidacao] = useState("");
     const [mensagemResposta, setMensagemResposta] = useState("");
     const [carregando, setCarregando] = useState(false);
+    const [textoCarregamento, setTextoCarregamento] = useState("Carregando vínculos...");
     const [idVinculoParaRemover, setIdVinculoParaRemover] = useState<number | null>(null);
     const [idEmpresaPadraoParaConfirmar, setIdEmpresaPadraoParaConfirmar] = useState<number | null>(null);
 
@@ -159,6 +161,7 @@ export default function VinculoUsuarioEmpresa({
         }
 
         setCarregando(true);
+        setTextoCarregamento("Carregando vínculos...");
         setMensagemValidacao("");
 
         try {
@@ -232,6 +235,7 @@ export default function VinculoUsuarioEmpresa({
         }
 
         setCarregando(true);
+        setTextoCarregamento("Criando vínculo...");
         setMensagemValidacao("");
 
         try {
@@ -272,6 +276,7 @@ export default function VinculoUsuarioEmpresa({
         }
 
         setCarregando(true);
+        setTextoCarregamento("Removendo vínculo...");
         setMensagemValidacao("");
 
         try {
@@ -313,6 +318,7 @@ export default function VinculoUsuarioEmpresa({
         }
 
         setCarregando(true);
+        setTextoCarregamento("Atualizando empresa padrão...");
         setMensagemValidacao("");
 
         try {
@@ -507,6 +513,10 @@ export default function VinculoUsuarioEmpresa({
                 onCancel={cancelarEmpresaPadrao}
                 confirmLabel="Confirmar"
                 cancelLabel="Cancelar"
+            />
+            <ModalCarregamento
+                show={carregando}
+                text={textoCarregamento}
             />
         </section>
     );
