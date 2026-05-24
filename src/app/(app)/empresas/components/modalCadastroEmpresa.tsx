@@ -419,7 +419,10 @@ export default function ModalCadastroEmpresa({
                     )}
 
                     {abaAtiva === "produtos" && (
-                        <ProdutosEmpresa idEmpresa={idEmpresa} />
+                        <ProdutosEmpresa
+                            idEmpresa={idEmpresa}
+                            exigirVinculoProduto={formulario.exigirVinculoProduto}
+                        />
                     )}
 
                     {abaAtiva === "regras" && (

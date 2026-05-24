@@ -10,6 +10,7 @@ Execute os scripts em ordem crescente pelo prefixo numérico. Esta pasta contém
 4. `005_criar_tabela_empresas.sql`
 5. `006_criar_tabela_usuarios_empresas.sql`
 6. `007_criar_tabela_produtos.sql`
+7. `008_criar_tabela_usuarios_produtos.sql`
 
 ## Tabela `usuarios`
 
@@ -163,3 +164,36 @@ Campos:
 - `produtos_ativo_idx`: índice para `ativo`.
 - `produtos_criado_por_idx`: índice para `criado_por`.
 - `produtos_empresa_nome_unico_idx`: índice único para evitar nomes duplicados dentro da mesma empresa.
+## Tabela `usuarios_produtos`
+
+Criada por `008_criar_tabela_usuarios_produtos.sql`.
+
+Objetivo:
+
+- Representar quais usuários vinculados a uma empresa também estão vinculados a produtos específicos dessa empresa.
+- Apoiar a regra operacional futura de atendimento restrito por produto quando `empresas.exigir_vinculo_produto` estiver habilitado.
+
+Campos:
+
+- `id`: chave primária.
+- `empresa_id`: empresa do contexto do vínculo.
+- `usuario_id`: usuário vinculado ao produto.
+- `produto_id`: produto vinculado ao usuário.
+- `criado_em`: data de criação do vínculo.
+- `criado_por`: usuário que criou o vínculo.
+
+Índices e relacionamentos:
+
+- `usuarios_produtos_pkey`: chave primária em `id`.
+- `usuarios_produtos_empresa_id_fkey`: FK de `empresa_id` para `empresas.id`.
+- `usuarios_produtos_usuario_id_fkey`: FK de `usuario_id` para `usuarios.id`.
+- `usuarios_produtos_produto_id_fkey`: FK de `produto_id` para `produtos.id`, com remoção em cascata quando o produto for excluído.
+- `usuarios_produtos_criado_por_fkey`: FK de `criado_por` para `usuarios.id`.
+- `usuarios_produtos_empresa_usuario_produto_unico`: constraint única para impedir duplicidade de vínculo entre a mesma empresa, usuário e produto.
+- `usuarios_produtos_empresa_id_idx`: índice para `empresa_id`.
+- `usuarios_produtos_usuario_id_idx`: índice para `usuario_id`.
+- `usuarios_produtos_produto_id_idx`: índice para `produto_id`.
+
+## Regra de vínculo usuário/produto
+
+A tabela `usuarios_produtos` representa apenas vínculos existentes. Não há campo `ativo` e não há campo `atualizado_em`; para remover um vínculo, o registro deve ser excluído fisicamente.

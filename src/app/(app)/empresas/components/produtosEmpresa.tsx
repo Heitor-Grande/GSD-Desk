@@ -8,6 +8,7 @@ import ModalResposta from "@/components/modals/responseModal";
 import { requisitarAPI } from "@/utils/api";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { FaBan, FaEdit, FaExclamationTriangle, FaPlus, FaSave, FaTimes } from "react-icons/fa";
+import UsuariosProduto from "./usuariosProduto";
 
 export type Produto = {
     id: number;
@@ -29,6 +30,13 @@ export type ProdutoFormulario = {
 
 type ProdutosEmpresaProps = {
     idEmpresa?: number | null;
+    exigirVinculoProduto: boolean;
+};
+
+type ProdutoApi = Omit<Produto, "id" | "empresa_id" | "criado_por"> & {
+    id: number | string;
+    empresa_id: number | string;
+    criado_por: number | string;
 };
 
 const estadoInicialProduto: ProdutoFormulario = {
@@ -38,8 +46,17 @@ const estadoInicialProduto: ProdutoFormulario = {
     ativo: true,
 };
 
+function mapearProdutoApi(produto: ProdutoApi): Produto {
+    return {
+        ...produto,
+        id: Number(produto.id),
+        empresa_id: Number(produto.empresa_id),
+        criado_por: Number(produto.criado_por),
+    };
+}
+
 function obterListaProdutos(dados: unknown): Produto[] {
-    return Array.isArray(dados) ? dados as Produto[] : [];
+    return Array.isArray(dados) ? (dados as ProdutoApi[]).map(mapearProdutoApi) : [];
 }
 
 function normalizarNomeProduto(valor: string): string {
@@ -55,11 +72,32 @@ function mapearProdutoParaFormulario(produto: Produto): ProdutoFormulario {
     };
 }
 
+function validarProdutoApi(dados: unknown): dados is Produto {
+    if (typeof dados !== "object" || dados === null) {
+        return false;
+    }
+
+    const produto = dados as Record<string, unknown>;
+
+    const id = Number(produto.id);
+    const empresaId = Number(produto.empresa_id);
+
+    return Number.isInteger(id)
+        && id > 0
+        && Number.isInteger(empresaId)
+        && empresaId > 0
+        && typeof produto.nome === "string"
+        && typeof produto.ativo === "boolean";
+}
+
 /**
  * Gerencia produtos vinculados ao cadastro de empresa.
  * Use dentro do modal de empresa, onde a empresa atual é o contexto fixo.
  */
-export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
+export default function ProdutosEmpresa({
+    idEmpresa,
+    exigirVinculoProduto,
+}: ProdutosEmpresaProps) {
     const [produtos, setProdutos] = useState<Produto[]>([]);
     const [formulario, setFormulario] = useState<ProdutoFormulario>(estadoInicialProduto);
     const [carregando, setCarregando] = useState(false);
@@ -177,7 +215,15 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
                 },
             });
 
-            limparFormularioProduto();
+            if (validarProdutoApi(resposta.dados)) {
+                const produtoSalvo = mapearProdutoApi(resposta.dados as ProdutoApi);
+
+                setFormulario(mapearProdutoParaFormulario(produtoSalvo));
+                setProdutoSelecionado(produtoSalvo);
+            } else {
+                limparFormularioProduto();
+            }
+
             setMensagemResposta(resposta.msg || "Produto salvo com sucesso.");
             await carregarProdutos();
         } catch (erro) {
@@ -357,56 +403,69 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
                 ) : produtos.length > 0 ? (
                     <div className="divide-y divide-slate-200">
                         {produtos.map((produto) => (
-                            <div key={produto.id} className={`flex flex-col gap-3 p-3 transition sm:flex-row sm:items-center sm:justify-between ${produtoSelecionado?.id === produto.id ? "bg-blue-50" : "bg-white"}`}>
-                                <button
-                                    type="button"
-                                    className="min-w-0 text-left disabled:cursor-not-allowed"
-                                    onClick={() => selecionarProdutoParaEdicao(produto)}
-                                    disabled={carregando}
-                                >
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <p className="text-sm font-semibold text-slate-900">{produto.nome}</p>
-                                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${produto.ativo ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700"}`}>
-                                            {produto.ativo ? "Ativo" : "Inativo"}
-                                        </span>
-                                        {produtoSelecionado?.id === produto.id && (
-                                            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
-                                                Em edição
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="mt-1 text-sm text-slate-500">
-                                        {produto.descricao || "Sem descrição."}
-                                    </p>
-                                </button>
-
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                    <Botao
-                                        size="sm"
-                                        label="Editar"
-                                        icon={<FaEdit />}
+                            <div key={produto.id} className={produtoSelecionado?.id === produto.id ? "bg-blue-50" : "bg-white"}>
+                                <div className="flex flex-col gap-3 p-3 transition sm:flex-row sm:items-center sm:justify-between">
+                                    <button
+                                        type="button"
+                                        className="min-w-0 text-left disabled:cursor-not-allowed"
                                         onClick={() => selecionarProdutoParaEdicao(produto)}
                                         disabled={carregando}
-                                        loading={false}
-                                        variant="outline-primary"
-                                        type="button"
-                                        className="w-full sm:w-auto"
-                                    />
+                                    >
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="text-sm font-semibold text-slate-900">{produto.nome}</p>
+                                            <span className={`rounded-full px-2 py-1 text-xs font-semibold ${produto.ativo ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700"}`}>
+                                                {produto.ativo ? "Ativo" : "Inativo"}
+                                            </span>
+                                            {produtoSelecionado?.id === produto.id && (
+                                                <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
+                                                    Em edição
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            {produto.descricao || "Sem descrição."}
+                                        </p>
+                                    </button>
 
-                                    {produto.ativo && (
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                                         <Botao
                                             size="sm"
-                                            label="Excluir"
-                                            icon={<FaBan />}
-                                            onClick={() => abrirConfirmacaoExclusao(produto.id)}
+                                            label="Editar"
+                                            icon={<FaEdit />}
+                                            onClick={() => selecionarProdutoParaEdicao(produto)}
                                             disabled={carregando}
                                             loading={false}
-                                            variant="outline-danger"
+                                            variant="outline-primary"
                                             type="button"
                                             className="w-full sm:w-auto"
                                         />
-                                    )}
+
+                                        {produto.ativo && (
+                                            <Botao
+                                                size="sm"
+                                                label="Excluir"
+                                                icon={<FaBan />}
+                                                onClick={() => abrirConfirmacaoExclusao(produto.id)}
+                                                disabled={carregando}
+                                                loading={false}
+                                                variant="outline-danger"
+                                                type="button"
+                                                className="w-full sm:w-auto"
+                                            />
+                                        )}
+                                    </div>
                                 </div>
+
+                                {produtoSelecionado?.id === produto.id && (
+                                    <div className="border-t border-blue-100 p-3">
+                                        <UsuariosProduto
+                                            empresaId={idEmpresa}
+                                            produtoId={produto.id}
+                                            nomeProduto={produto.nome}
+                                            exigirVinculoProduto={exigirVinculoProduto}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -416,6 +475,15 @@ export default function ProdutosEmpresa({ idEmpresa }: ProdutosEmpresaProps) {
                     </div>
                 )}
             </div>
+
+
+            <UsuariosProduto
+                empresaId={idEmpresa}
+                produtoId={null}
+                nomeProduto=""
+                exigirVinculoProduto={exigirVinculoProduto}
+            />
+
 
             <ModalConfirmacao
                 isOpen={Boolean(idProdutoParaExcluir)}
