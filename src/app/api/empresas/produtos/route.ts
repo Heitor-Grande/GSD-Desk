@@ -22,6 +22,10 @@ type ProdutoListado = {
     atualizado_em: Date | null;
 };
 
+type TotalVinculos = {
+    total: string;
+};
+
 type ProdutoBody = {
     id?: unknown;
     empresaId?: unknown;
@@ -352,6 +356,21 @@ export async function DELETE(request: NextRequest) {
 
         if (respostaEmpresa) {
             return respostaEmpresa;
+        }
+
+        const resultadoVinculos = await consultarBancoDados<TotalVinculos>(
+            `
+                select count(*) as total
+                from usuarios_produtos
+                where empresa_id = $1
+                    and produto_id = $2
+            `,
+            [empresaId, id]
+        );
+        const totalVinculos = Number(resultadoVinculos.rows[0]?.total ?? 0);
+
+        if (totalVinculos > 0) {
+            return criarRespostaApi(false, "Não é possível excluir o produto, pois existem usuários vinculados a ele.", null, 409);
         }
 
         const resultado = await consultarBancoDados<ProdutoListado>(

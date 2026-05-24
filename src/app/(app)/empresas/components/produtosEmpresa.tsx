@@ -233,7 +233,7 @@ export default function ProdutosEmpresa({
                 },
             });
 
-            if (validarProdutoApi(resposta.dados)) {
+            if (isEditandoProduto && validarProdutoApi(resposta.dados)) {
                 const produtoSalvo = mapearProdutoApi(resposta.dados as ProdutoApi);
 
                 setFormulario(mapearProdutoParaFormulario(produtoSalvo));
