@@ -14,6 +14,7 @@ O **GSD Desk** é uma aplicação web para gerenciamento de tickets, solicitaç�
 * Controle de permissões por perfil.
 * Controle administrativo por usuário com campo `isAdmin`.
 * Gestão de usuários, empresas, perfis e vínculos.
+* Gestão de produtos vinculados ao cadastro de empresas.
 * Tela de minha conta para manutenção dos dados do usuário autenticado.
 * Configurações gerais da aplicação e parâmetros de e-mail.
 * Respostas de API padronizadas com `sucesso`, `msg` e `dados`.
@@ -43,7 +44,7 @@ Tela inicial da área interna. Serve como ponto de entrada para acompanhamento g
 
 ### Empresas
 
-Permite consultar empresas cadastradas e, para usuários administradores, criar, editar e excluir empresas. Ao criar uma empresa, o sistema vincula automaticamente o usuário criador à nova empresa.
+Permite consultar empresas cadastradas e, para usuários administradores, criar, editar e excluir empresas. Ao criar uma empresa, o sistema vincula automaticamente o usuário criador à nova empresa. No formulário de empresa, também é possível gerenciar usuários vinculados e produtos da empresa.
 
 ### Usuários
 

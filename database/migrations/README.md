@@ -9,6 +9,7 @@ Execute os scripts em ordem crescente pelo prefixo numérico. Esta pasta contém
 3. `004_criar_tabela_perfil.sql`
 4. `005_criar_tabela_empresas.sql`
 5. `006_criar_tabela_usuarios_empresas.sql`
+6. `007_criar_tabela_produtos.sql`
 
 ## Tabela `usuarios`
 
@@ -136,3 +137,28 @@ Campos:
 A tabela `usuarios_empresas` representa apenas vínculos existentes. Não há campo `ativo` e não há campo `atualizado_em` nessa tabela. Para remover um vínculo, o registro deve ser excluído fisicamente.
 
 O campo `usuarios.empresa_padrao` guarda a empresa padrão opcional do usuário. Quando um vínculo é criado e o usuário não possui empresa padrão, a empresa vinculada pode ser definida como padrão. Quando o vínculo da empresa padrão é removido, a aplicação deve escolher outra empresa vinculada ou definir `empresa_padrao` como `null` quando não houver outro vínculo.
+
+## Tabela `produtos`
+
+Criada por `007_criar_tabela_produtos.sql`.
+
+Campos:
+
+- `id`: chave primária.
+- `empresa_id`: empresa vinculada ao produto.
+- `nome`: nome do produto.
+- `descricao`: descrição opcional.
+- `ativo`: status do produto.
+- `criado_em`: data de criação.
+- `criado_por`: usuário que criou o produto.
+- `atualizado_em`: data da última atualização.
+
+Índices e relacionamentos:
+
+- `produtos_pkey`: chave primária em `id`.
+- `produtos_empresa_id_fkey`: FK de `empresa_id` para `empresas.id`.
+- `produtos_criado_por_fkey`: FK de `criado_por` para `usuarios.id`.
+- `produtos_empresa_id_idx`: índice para `empresa_id`.
+- `produtos_ativo_idx`: índice para `ativo`.
+- `produtos_criado_por_idx`: índice para `criado_por`.
+- `produtos_empresa_nome_unico_idx`: índice único para evitar nomes duplicados dentro da mesma empresa.

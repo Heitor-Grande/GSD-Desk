@@ -10,6 +10,7 @@ import { requisitarAPI } from "@/utils/api";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Modal } from "react-bootstrap";
 import { FaExclamationTriangle, FaSave, FaTimes, FaTrash } from "react-icons/fa";
+import ProdutosEmpresa from "./produtosEmpresa";
 
 type DadosCadastroEmpresa = {
     id: number | null;
@@ -38,6 +39,8 @@ type ModalCadastroEmpresaProps = {
     idEmpresa?: number | null;
     aoFechar: () => void;
 };
+
+type AbaEmpresa = "dados" | "usuarios" | "produtos";
 
 const estadoInicialFormulario: DadosCadastroEmpresa = {
     id: null,
@@ -98,6 +101,7 @@ export default function ModalCadastroEmpresa({
     const [textoCarregamento, setTextoCarregamento] = useState("Processando solicitação...");
     const [mensagemResposta, setMensagemResposta] = useState("");
     const [modalConfirmacaoExclusaoAberto, setModalConfirmacaoExclusaoAberto] = useState(false);
+    const [abaAtiva, setAbaAtiva] = useState<AbaEmpresa>("dados");
 
     const estaVisualizandoEmpresa = typeof idEmpresa === "number" && idEmpresa > 0;
 
@@ -145,6 +149,7 @@ export default function ModalCadastroEmpresa({
         setMensagemResposta("");
         setCarregando(false);
         setModalConfirmacaoExclusaoAberto(false);
+        setAbaAtiva("dados");
     }
 
     function fecharModalCadastroEmpresa() {
@@ -211,6 +216,14 @@ export default function ModalCadastroEmpresa({
         }
     }
 
+    function obterClassesAba(aba: AbaEmpresa): string {
+        const classesBase = "rounded-lg px-3 py-2 text-sm font-semibold transition";
+
+        return abaAtiva === aba
+            ? `${classesBase} bg-blue-600 text-white shadow-sm`
+            : `${classesBase} bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900`;
+    }
+
     useEffect(() => {
         if (!aberto) {
             return;
@@ -244,9 +257,34 @@ export default function ModalCadastroEmpresa({
                     </Modal.Title>
                 </Modal.Header>
 
-                <form onSubmit={cadastrarEmpresa}>
-                    <Modal.Body>
-                        <div className="grid gap-4 md:grid-cols-12">
+                <Modal.Body>
+                    <div className="mb-4 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                        <button
+                            type="button"
+                            className={obterClassesAba("dados")}
+                            onClick={() => setAbaAtiva("dados")}
+                        >
+                            Dados da empresa
+                        </button>
+                        <button
+                            type="button"
+                            className={obterClassesAba("usuarios")}
+                            onClick={() => setAbaAtiva("usuarios")}
+                        >
+                            Usuários vinculados
+                        </button>
+                        <button
+                            type="button"
+                            className={obterClassesAba("produtos")}
+                            onClick={() => setAbaAtiva("produtos")}
+                        >
+                            Produtos
+                        </button>
+                    </div>
+
+                    {abaAtiva === "dados" && (
+                        <form id="formulario-cadastro-empresa" onSubmit={cadastrarEmpresa}>
+                            <div className="grid gap-4 md:grid-cols-12">
                             <div className="md:col-span-6">
                                 <CampoTexto
                                     id="empresa-fantasia"
@@ -346,20 +384,32 @@ export default function ModalCadastroEmpresa({
                                     className="mb-0"
                                 />
                             </div>
+                            </div>
+                        </form>
+                    )}
 
-                            {estaVisualizandoEmpresa && (
-                                <div className="md:col-span-12">
-                                    <VinculoUsuarioEmpresa
-                                        form="empresa"
-                                        idEmpresa={idEmpresa}
-                                        nomeContexto={formulario.fantasia}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </Modal.Body>
+                    {abaAtiva === "usuarios" && (
+                        estaVisualizandoEmpresa ? (
+                            <VinculoUsuarioEmpresa
+                                form="empresa"
+                                idEmpresa={idEmpresa}
+                                nomeContexto={formulario.fantasia}
+                            />
+                        ) : (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm font-medium text-amber-800">
+                                Salve a empresa antes de gerenciar usuários vinculados.
+                            </div>
+                        )
+                    )}
 
-                    <Modal.Footer>
+                    {abaAtiva === "produtos" && (
+                        <ProdutosEmpresa idEmpresa={idEmpresa} />
+                    )}
+                </Modal.Body>
+
+                <Modal.Footer>
+                    {abaAtiva === "dados" ? (
+                        <>
                         {estaVisualizandoEmpresa && (
                             <Botao
                                 size="sm"
@@ -396,9 +446,23 @@ export default function ModalCadastroEmpresa({
                             variant="outline-primary"
                             type="submit"
                             className=""
+                            form="formulario-cadastro-empresa"
                         />
-                    </Modal.Footer>
-                </form>
+                        </>
+                    ) : (
+                        <Botao
+                            size="sm"
+                            label="Fechar"
+                            icon={<FaTimes />}
+                            onClick={fecharModalCadastroEmpresa}
+                            disabled={carregando}
+                            loading={false}
+                            variant="outline-secondary"
+                            type="button"
+                            className=""
+                        />
+                    )}
+                </Modal.Footer>
             </Modal>
 
             <ModalConfirmacao
