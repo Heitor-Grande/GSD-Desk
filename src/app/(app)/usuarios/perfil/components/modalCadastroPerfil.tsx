@@ -10,7 +10,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Modal } from "react-bootstrap";
 import { FaExclamationTriangle, FaSave, FaTimes, FaTrash } from "react-icons/fa";
 
-export type RecursoPermissaoPerfil = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil";
+export type RecursoPermissaoPerfil = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil" | "ticket";
 
 export type PermissaoPerfil = {
     criar: boolean;
@@ -45,6 +45,7 @@ const recursosPermissao: Array<{ chave: RecursoPermissaoPerfil; titulo: string }
     { chave: "dashboard", titulo: "Dashboard" },
     { chave: "usuario", titulo: "Usuário" },
     { chave: "empresa", titulo: "Empresa" },
+    { chave: "ticket", titulo: "Tickets" },
     { chave: "configuracao", titulo: "Configuração" },
     { chave: "perfil", titulo: "Perfil" },
 ];
@@ -70,6 +71,12 @@ const permissoesIniciais: Record<RecursoPermissaoPerfil, PermissaoPerfil> = {
         visualizar: false,
     },
     empresa: {
+        criar: false,
+        deletar: false,
+        atualizar: false,
+        visualizar: false,
+    },
+    ticket: {
         criar: false,
         deletar: false,
         atualizar: false,
@@ -106,6 +113,7 @@ function clonarPermissoes(permissoes: Record<RecursoPermissaoPerfil, PermissaoPe
         dashboard: { ...permissoes.dashboard },
         usuario: { ...permissoes.usuario },
         empresa: { ...permissoes.empresa },
+        ticket: { ...permissoes.ticket },
         configuracao: { ...permissoes.configuracao },
         perfil: { ...permissoes.perfil },
     };
@@ -126,6 +134,10 @@ function normalizarPermissoesPerfil(permissoes: Partial<Record<RecursoPermissaoP
         empresa: {
             ...permissoesIniciais.empresa,
             ...permissoes.empresa,
+        },
+        ticket: {
+            ...permissoesIniciais.ticket,
+            ...permissoes.ticket,
         },
         configuracao: {
             ...permissoesIniciais.configuracao,

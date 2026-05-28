@@ -16,6 +16,7 @@ import {
     FaHome,
     FaList,
     FaSignOutAlt,
+    FaTicketAlt,
     FaTimes,
     FaUserCircle,
     FaUserShield,
@@ -29,7 +30,7 @@ type MenuItem = {
     children?: MenuItem[];
 };
 
-type RecursoPermissao = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil";
+type RecursoPermissao = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil" | "ticket";
 type AcaoPermissao = "visualizar" | "criar" | "atualizar" | "deletar";
 type PermissoesPerfil = Record<RecursoPermissao, Record<AcaoPermissao, boolean>>;
 
@@ -142,6 +143,7 @@ export default function BarraLateral() {
     const podeVisualizarEmpresa = Boolean(permissoesPerfil?.empresa?.visualizar);
     const podeVisualizarPerfil = Boolean(permissoesPerfil?.perfil?.visualizar);
     const podeVisualizarConfiguracao = Boolean(permissoesPerfil?.configuracao?.visualizar);
+    const podeVisualizarTicket = Boolean(permissoesPerfil?.ticket?.visualizar);
 
     const menusUsuario: MenuItem[] = [
         ...(podeVisualizarUsuario
@@ -158,6 +160,9 @@ export default function BarraLateral() {
             : []),
         ...(podeVisualizarEmpresa
             ? [{ label: "Empresas", href: "/empresas", icon: <FaBuilding /> }]
+            : []),
+        ...(podeVisualizarTicket
+            ? [{ label: "Tickets", href: "/tickets", icon: <FaTicketAlt /> }]
             : []),
         ...(menusUsuario.length > 0
             ? [{
