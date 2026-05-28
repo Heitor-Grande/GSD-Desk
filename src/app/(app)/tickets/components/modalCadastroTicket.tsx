@@ -18,19 +18,40 @@ type OpcaoSeletor = {
 type EmpresaApi = {
     id: number;
     fantasia: string;
-    ativo: boolean;
+    empresaPadrao: boolean;
 };
 
 type ProdutoApi = {
     id: number;
     nome: string;
-    ativo: boolean;
 };
 
-type UsuarioEmpresaApi = {
-    usuario_id: number;
+type UsuarioFormularioApi = {
+    id: number;
     nome: string;
     email: string | null;
+    ativo?: boolean;
+    agenteSuporte?: boolean;
+};
+
+type UsuarioAutenticadoApi = {
+    id: number;
+    nome: string;
+    email: string;
+    perfilNome: string | null;
+    agenteSuporte: boolean;
+};
+
+type DadosFormularioTicketApi = {
+    usuarioAutenticado: UsuarioAutenticadoApi;
+    empresas: EmpresaApi[];
+};
+
+type DadosFormularioEmpresaTicketApi = {
+    produtos: ProdutoApi[];
+    usuariosAtivos: UsuarioFormularioApi[];
+    agentesSuporte: UsuarioFormularioApi[];
+    usuariosHistorico: UsuarioFormularioApi[];
 };
 
 type DadosFormularioTicket = {
@@ -43,6 +64,7 @@ type DadosFormularioTicket = {
     prioridade: OpcaoSeletor | null;
     criadoEm: string;
     atualizadoEm: string;
+    criadoPor: OpcaoSeletor | null;
     fechadoEm: string;
     fechadoPor: OpcaoSeletor | null;
 };
@@ -55,12 +77,10 @@ type ModalCadastroTicketProps = {
 type AbaTicket = "informacoesGerais" | "chat";
 
 const opcoesStatus: OpcaoSeletor[] = [
-    { label: "Criando", value: "criando" },
-    { label: "Com agente", value: "com_agente" },
+    { label: "Com Agente", value: "com_agente" },
     { label: "Com Cliente", value: "com_cliente" },
     { label: "Encerrado Resolvido", value: "encerrado_resolvido" },
-    { label: "Encerrado", value: "encerrado" },
-    { label: "Não Resolvido", value: "nao_resolvido" },
+    { label: "Encerrado, Não Resolvido", value: "encerrado_nao_resolvido" },
 ];
 
 const opcoesPrioridade: OpcaoSeletor[] = [
@@ -77,13 +97,27 @@ function criarEstadoInicialTicket(): DadosFormularioTicket {
         produto: null,
         responsavel: null,
         agente: null,
-        status: opcoesStatus[0],
-        prioridade: opcoesPrioridade[0],
+        status: null,
+        prioridade: null,
         criadoEm: "",
         atualizadoEm: "",
+        criadoPor: null,
         fechadoEm: "",
         fechadoPor: null,
     };
+}
+
+const CHAVE_EMPRESA_NAVEGACAO = "empresaNavegacaoId";
+
+function criarOpcaoUsuario(usuario: UsuarioFormularioApi | UsuarioAutenticadoApi): OpcaoSeletor {
+    return {
+        label: `${usuario.nome}${usuario.email ? ` - ${usuario.email}` : ""}`,
+        value: String(usuario.id),
+    };
+}
+
+function obterOpcaoUsuarioAutenticado(usuario: UsuarioAutenticadoApi | null): OpcaoSeletor | null {
+    return usuario ? criarOpcaoUsuario(usuario) : null;
 }
 
 /**
@@ -98,6 +132,9 @@ export default function ModalCadastroTicket({
     const [opcoesEmpresa, setOpcoesEmpresa] = useState<OpcaoSeletor[]>([]);
     const [opcoesProduto, setOpcoesProduto] = useState<OpcaoSeletor[]>([]);
     const [opcoesUsuario, setOpcoesUsuario] = useState<OpcaoSeletor[]>([]);
+    const [opcoesAgente, setOpcoesAgente] = useState<OpcaoSeletor[]>([]);
+    const [opcoesUsuarioHistorico, setOpcoesUsuarioHistorico] = useState<OpcaoSeletor[]>([]);
+    const [usuarioAutenticado, setUsuarioAutenticado] = useState<UsuarioAutenticadoApi | null>(null);
     const [carregando, setCarregando] = useState(false);
     const [mensagemResposta, setMensagemResposta] = useState("");
     const [abaAtiva, setAbaAtiva] = useState<AbaTicket>("informacoesGerais");
@@ -113,6 +150,9 @@ export default function ModalCadastroTicket({
         setFormulario(criarEstadoInicialTicket());
         setOpcoesProduto([]);
         setOpcoesUsuario([]);
+        setOpcoesAgente([]);
+        setOpcoesUsuarioHistorico([]);
+        setUsuarioAutenticado(null);
         setMensagemResposta("");
         setCarregando(false);
         setAbaAtiva("informacoesGerais");
@@ -126,42 +166,22 @@ export default function ModalCadastroTicket({
             : `${classesBase} bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900`;
     }
 
-    const carregarEmpresas = useCallback(async () => {
-        setCarregando(true);
-        setMensagemResposta("");
-
-        try {
-            const resposta = await requisitarAPI("/api/empresas", {
-                method: "GET",
-            });
-
-            const empresas = Array.isArray(resposta.dados) ? resposta.dados as EmpresaApi[] : [];
-
-            setOpcoesEmpresa(empresas.map((empresa) => ({
-                label: `${empresa.fantasia}${empresa.ativo ? "" : " (inativa)"}`,
-                value: String(empresa.id),
-            })));
-        } catch (erro) {
-            const mensagemErro = erro instanceof Error
-                ? erro.message
-                : "Não foi possível carregar as empresas.";
-
-            setMensagemResposta(mensagemErro);
-        } finally {
-            setCarregando(false);
-        }
-    }, []);
-
-    async function carregarDadosEmpresa(empresaSelecionada: OpcaoSeletor | null) {
+    const carregarDadosEmpresa = useCallback(async (
+        empresaSelecionada: OpcaoSeletor | null,
+        usuarioInformado: UsuarioAutenticadoApi | null = null
+    ) => {
         atualizarCampoFormulario("empresa", empresaSelecionada);
         setOpcoesProduto([]);
         setOpcoesUsuario([]);
+        setOpcoesAgente([]);
+        setOpcoesUsuarioHistorico([]);
         setFormulario((estadoAtual) => ({
             ...estadoAtual,
             empresa: empresaSelecionada,
             produto: null,
             responsavel: null,
             agente: null,
+            criadoPor: null,
             fechadoPor: null,
         }));
 
@@ -173,26 +193,32 @@ export default function ModalCadastroTicket({
         setMensagemResposta("");
 
         try {
-            const [respostaProdutos, respostaUsuarios] = await Promise.all([
-                requisitarAPI(`/api/empresas/produtos?empresaId=${empresaSelecionada.value}`, {
-                    method: "GET",
-                }),
-                requisitarAPI(`/api/empresas/usuarios?empresaId=${empresaSelecionada.value}`, {
-                    method: "GET",
-                }),
-            ]);
-
-            const produtos = Array.isArray(respostaProdutos.dados) ? respostaProdutos.dados as ProdutoApi[] : [];
-            const usuarios = Array.isArray(respostaUsuarios.dados) ? respostaUsuarios.dados as UsuarioEmpresaApi[] : [];
+            const resposta = await requisitarAPI(`/api/tickets/formulario/empresa?empresaId=${empresaSelecionada.value}`, {
+                method: "GET",
+            });
+            const dados = resposta.dados as DadosFormularioEmpresaTicketApi | null;
+            const produtos = dados?.produtos ?? [];
+            const usuariosAtivos = dados?.usuariosAtivos ?? [];
+            const agentesSuporte = dados?.agentesSuporte ?? [];
+            const usuariosHistorico = dados?.usuariosHistorico ?? [];
+            const opcaoUsuarioLogado = obterOpcaoUsuarioAutenticado(usuarioInformado);
 
             setOpcoesProduto(produtos.map((produto) => ({
-                label: `${produto.nome}${produto.ativo ? "" : " (inativo)"}`,
+                label: produto.nome,
                 value: String(produto.id),
             })));
-            setOpcoesUsuario(usuarios.map((usuario) => ({
-                label: `${usuario.nome}${usuario.email ? ` - ${usuario.email}` : ""}`,
-                value: String(usuario.usuario_id),
+            setOpcoesUsuario(usuariosAtivos.map(criarOpcaoUsuario));
+            setOpcoesAgente(agentesSuporte.map(criarOpcaoUsuario));
+            setOpcoesUsuarioHistorico(usuariosHistorico.map((usuario) => ({
+                label: `${usuario.nome}${usuario.email ? ` - ${usuario.email}` : ""}${usuario.ativo === false ? " (inativo)" : ""}`,
+                value: String(usuario.id),
             })));
+
+            setFormulario((estadoAtual) => ({
+                ...estadoAtual,
+                responsavel: usuarioInformado?.agenteSuporte ? null : opcaoUsuarioLogado,
+                agente: usuarioInformado?.agenteSuporte ? opcaoUsuarioLogado : null,
+            }));
         } catch (erro) {
             const mensagemErro = erro instanceof Error
                 ? erro.message
@@ -202,7 +228,53 @@ export default function ModalCadastroTicket({
         } finally {
             setCarregando(false);
         }
-    }
+    }, []);
+
+    const carregarEmpresas = useCallback(async () => {
+        setCarregando(true);
+        setMensagemResposta("");
+
+        try {
+            const resposta = await requisitarAPI("/api/tickets/formulario", {
+                method: "GET",
+            });
+
+            const dados = resposta.dados as DadosFormularioTicketApi | null;
+            const empresas = dados?.empresas ?? [];
+            const usuario = dados?.usuarioAutenticado ?? null;
+            const idEmpresaNavegacao = localStorage.getItem(CHAVE_EMPRESA_NAVEGACAO);
+
+            setUsuarioAutenticado(usuario);
+
+            const novasOpcoesEmpresa = empresas.map((empresa) => ({
+                label: empresa.fantasia,
+                value: String(empresa.id),
+            }));
+            const empresaInicial = empresas.find((empresa) => String(empresa.id) === idEmpresaNavegacao)
+                ?? empresas.find((empresa) => empresa.empresaPadrao)
+                ?? empresas[0];
+            const opcaoEmpresaInicial = empresaInicial
+                ? {
+                    label: empresaInicial.fantasia,
+                    value: String(empresaInicial.id),
+                }
+                : null;
+
+            setOpcoesEmpresa(novasOpcoesEmpresa);
+
+            if (opcaoEmpresaInicial) {
+                await carregarDadosEmpresa(opcaoEmpresaInicial, usuario);
+            }
+        } catch (erro) {
+            const mensagemErro = erro instanceof Error
+                ? erro.message
+                : "Não foi possível carregar as empresas.";
+
+            setMensagemResposta(mensagemErro);
+        } finally {
+            setCarregando(false);
+        }
+    }, [carregarDadosEmpresa]);
 
     function salvarTicket(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -211,6 +283,16 @@ export default function ModalCadastroTicket({
 
         if (titulo.length < 5 || titulo.length > 50) {
             setMensagemResposta("O título deve ter entre 5 e 50 caracteres.");
+            return;
+        }
+
+        if (!formulario.empresa || !formulario.produto || !formulario.responsavel) {
+            setMensagemResposta("Informe empresa, produto e responsável para criar o ticket.");
+            return;
+        }
+
+        if (usuarioAutenticado?.agenteSuporte && (!formulario.status || !formulario.prioridade)) {
+            setMensagemResposta("Informe status e prioridade para criar o ticket.");
             return;
         }
 
@@ -288,10 +370,10 @@ export default function ModalCadastroTicket({
                                         options={opcoesEmpresa}
                                         value={formulario.empresa}
                                         onChange={(opcao) => {
-                                            void carregarDadosEmpresa(opcao);
+                                            void carregarDadosEmpresa(opcao, usuarioAutenticado);
                                         }}
                                         placeholder="Selecione a empresa"
-                                        isDisabled={carregando}
+                                        isDisabled
                                         isClearable
                                         className="w-full"
                                     />
@@ -319,7 +401,7 @@ export default function ModalCadastroTicket({
                                         value={formulario.responsavel}
                                         onChange={(opcao) => atualizarCampoFormulario("responsavel", opcao)}
                                         placeholder="Selecione o responsável"
-                                        isDisabled={carregando || !formulario.empresa}
+                                        isDisabled={carregando || !formulario.empresa || !usuarioAutenticado?.agenteSuporte}
                                         isClearable
                                         className="w-full"
                                     />
@@ -329,11 +411,11 @@ export default function ModalCadastroTicket({
                                     <Seletor
                                         id="ticket-agente"
                                         label="Agente"
-                                        options={opcoesUsuario}
+                                        options={opcoesAgente}
                                         value={formulario.agente}
                                         onChange={(opcao) => atualizarCampoFormulario("agente", opcao)}
                                         placeholder="Selecione o agente"
-                                        isDisabled={carregando || !formulario.empresa}
+                                        isDisabled
                                         isClearable
                                         className="w-full"
                                     />
@@ -347,7 +429,7 @@ export default function ModalCadastroTicket({
                                         value={formulario.status}
                                         onChange={(opcao) => atualizarCampoFormulario("status", opcao)}
                                         placeholder="Selecione o status"
-                                        isDisabled={carregando}
+                                        isDisabled
                                         isClearable={false}
                                         className="w-full"
                                     />
@@ -361,7 +443,7 @@ export default function ModalCadastroTicket({
                                         value={formulario.prioridade}
                                         onChange={(opcao) => atualizarCampoFormulario("prioridade", opcao)}
                                         placeholder="Selecione a prioridade"
-                                        isDisabled={carregando}
+                                        isDisabled={carregando || !usuarioAutenticado?.agenteSuporte}
                                         isClearable={false}
                                         className="w-full"
                                     />
@@ -378,6 +460,20 @@ export default function ModalCadastroTicket({
                                         disabled
                                         required={false}
                                         className="mb-0"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-3">
+                                    <Seletor
+                                        id="ticket-criado-por"
+                                        label="Criado por"
+                                        options={opcoesUsuarioHistorico}
+                                        value={formulario.criadoPor}
+                                        onChange={(opcao) => atualizarCampoFormulario("criadoPor", opcao)}
+                                        placeholder=""
+                                        isDisabled
+                                        isClearable
+                                        className="w-full"
                                     />
                                 </div>
 
@@ -413,14 +509,14 @@ export default function ModalCadastroTicket({
                                     <Seletor
                                         id="ticket-fechado-por"
                                         label="Fechado por"
-                                        options={opcoesUsuario}
+                                        options={opcoesUsuarioHistorico}
                                         value={formulario.fechadoPor}
-                                    onChange={(opcao) => atualizarCampoFormulario("fechadoPor", opcao)}
-                                    placeholder="Selecione quem fechou"
-                                    isDisabled
-                                    isClearable
-                                    className="w-full"
-                                />
+                                        onChange={(opcao) => atualizarCampoFormulario("fechadoPor", opcao)}
+                                        placeholder="Selecione quem fechou"
+                                        isDisabled
+                                        isClearable
+                                        className="w-full"
+                                    />
                                 </div>
                             </div>
                         )}
