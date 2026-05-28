@@ -123,6 +123,7 @@ Regras atuais importantes:
 - Leitura de usuários usa `empresaNavegacaoId` e deve confirmar que a empresa pertence ao usuário autenticado com `verificarEmpresaPertenceAoUsuario`.
 - Ao criar uma empresa, crie também o vínculo em `usuarios_empresas` para o usuário criador.
 - Ao criar vínculo entre usuário e empresa, se o usuário vinculado ainda não possuir `empresa_padrao`, defina a empresa do vínculo como padrão.
+- Empresas possuem a regra `suporte_visualiza_apenas_tickets_proprios`. Quando estiver ativa, listagens de tickets para usuários de suporte devem retornar apenas tickets atribuídos ao próprio usuário autenticado na empresa de navegação.
 
 ## Frontend e chamadas de API
 

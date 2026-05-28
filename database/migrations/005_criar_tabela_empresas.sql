@@ -6,6 +6,7 @@ create table if not exists public.empresas (
     telefone varchar(20) null,
     ativo boolean default true not null,
     exigir_vinculo_produto boolean default false not null,
+    suporte_visualiza_apenas_tickets_proprios boolean default true not null,
     criado_em timestamptz default now() not null,
     atualizado_em timestamptz default now() not null,
     criado_por bigint not null,
@@ -23,6 +24,9 @@ create index if not exists empresas_criado_por_idx
 
 create index if not exists empresas_atualizado_por_idx
     on public.empresas using btree (atualizado_por);
+
+alter table public.empresas
+    add column if not exists suporte_visualiza_apenas_tickets_proprios boolean default true not null;
 
 do $$
 begin

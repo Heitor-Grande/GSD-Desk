@@ -20,6 +20,7 @@ type DadosCadastroEmpresa = {
     telefone: string;
     ativo: boolean;
     exigirVinculoProduto: boolean;
+    suporteVisualizaApenasTicketsProprios: boolean;
     criadoEm: string;
     atualizadoEm: string;
 };
@@ -32,6 +33,7 @@ type EmpresaDetalhadaApi = {
     telefone: string | null;
     ativo: boolean;
     exigir_vinculo_produto: boolean;
+    suporte_visualiza_apenas_tickets_proprios: boolean;
     criado_em: string;
     atualizado_em: string;
 };
@@ -52,6 +54,7 @@ const estadoInicialFormulario: DadosCadastroEmpresa = {
     telefone: "",
     ativo: true,
     exigirVinculoProduto: false,
+    suporteVisualizaApenasTicketsProprios: true,
     criadoEm: "",
     atualizadoEm: "",
 };
@@ -86,6 +89,7 @@ function mapearEmpresaParaFormulario(empresa: EmpresaDetalhadaApi): DadosCadastr
         telefone: empresa.telefone || "",
         ativo: empresa.ativo,
         exigirVinculoProduto: empresa.exigir_vinculo_produto,
+        suporteVisualizaApenasTicketsProprios: empresa.suporte_visualiza_apenas_tickets_proprios,
         criadoEm: formatarDataHoraFormulario(empresa.criado_em),
         atualizadoEm: formatarDataHoraFormulario(empresa.atualizado_em),
     };
@@ -176,6 +180,7 @@ export default function ModalCadastroEmpresa({
                     telefone: formulario.telefone,
                     ativo: formulario.ativo,
                     exigirVinculoProduto: formulario.exigirVinculoProduto,
+                    suporteVisualizaApenasTicketsProprios: formulario.suporteVisualizaApenasTicketsProprios,
                 },
             });
 
@@ -452,6 +457,32 @@ export default function ModalCadastroEmpresa({
                                             <span
                                                 className="inline-flex cursor-help text-slate-500"
                                                 title="Quando habilitado, usuários de suporte visualizarão apenas os produtos vinculados a eles. Quando desabilitado, todos os usuários de suporte poderão atender todos os produtos da empresa."
+                                            >
+                                                <FaInfoCircle aria-hidden="true" />
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <div className="flex items-start gap-3">
+                                    <input
+                                        id="empresa-suporte-tickets-proprios"
+                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                        type="checkbox"
+                                        checked={formulario.suporteVisualizaApenasTicketsProprios}
+                                        disabled={carregando}
+                                        onChange={(event) => atualizarCampoFormulario("suporteVisualizaApenasTicketsProprios", event.target.checked)}
+                                    />
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <label className="text-sm font-semibold text-slate-800" htmlFor="empresa-suporte-tickets-proprios">
+                                                Usuário de suporte visualiza apenas os seus próprios tickets
+                                            </label>
+                                            <span
+                                                className="inline-flex cursor-help text-slate-500"
+                                                title="Quando habilitado, a listagem de tickets deverá limitar usuários de suporte aos tickets atribuídos a eles na empresa selecionada."
                                             >
                                                 <FaInfoCircle aria-hidden="true" />
                                             </span>

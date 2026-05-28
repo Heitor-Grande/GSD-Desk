@@ -98,6 +98,7 @@ Campos:
 - `telefone`: telefone opcional.
 - `ativo`: status da empresa.
 - `exigir_vinculo_produto`: define se usuários de suporte precisam estar vinculados aos produtos da empresa.
+- `suporte_visualiza_apenas_tickets_proprios`: define se usuários de suporte visualizam apenas tickets atribuídos a eles na empresa.
 - `criado_em`: data de criação.
 - `atualizado_em`: data da última atualização.
 - `criado_por`: usuário que criou a empresa.

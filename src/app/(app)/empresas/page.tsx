@@ -17,6 +17,7 @@ type EmpresaTabela = {
     telefone: string | null;
     ativo: boolean;
     exigir_vinculo_produto: boolean;
+    suporte_visualiza_apenas_tickets_proprios: boolean;
     criado_em: string;
     atualizado_em: string;
 };

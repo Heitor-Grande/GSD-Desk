@@ -14,6 +14,7 @@ type EmpresaListada = {
     telefone: string | null;
     ativo: boolean;
     exigir_vinculo_produto: boolean;
+    suporte_visualiza_apenas_tickets_proprios: boolean;
     criado_em: Date;
     atualizado_em: Date;
 };
@@ -26,6 +27,7 @@ type CadastroEmpresaBody = {
     telefone?: unknown;
     ativo?: unknown;
     exigirVinculoProduto?: unknown;
+    suporteVisualizaApenasTicketsProprios?: unknown;
 };
 
 function normalizarCnpj(valor: unknown): string {
@@ -81,6 +83,7 @@ export async function DELETE(request: NextRequest) {
                     telefone,
                     ativo,
                     exigir_vinculo_produto,
+                    suporte_visualiza_apenas_tickets_proprios,
                     criado_em,
                     atualizado_em
             `,
@@ -130,6 +133,7 @@ export async function GET(request: NextRequest) {
                         telefone,
                         ativo,
                         exigir_vinculo_produto,
+                        suporte_visualiza_apenas_tickets_proprios,
                         criado_em,
                         atualizado_em
                     from empresas
@@ -164,6 +168,7 @@ export async function GET(request: NextRequest) {
                     e.telefone,
                     e.ativo,
                     e.exigir_vinculo_produto,
+                    e.suporte_visualiza_apenas_tickets_proprios,
                     e.criado_em,
                     e.atualizado_em
                 from empresas e
@@ -217,6 +222,9 @@ export async function POST(request: NextRequest) {
         const exigirVinculoProduto = typeof body.exigirVinculoProduto === "boolean"
             ? body.exigirVinculoProduto
             : false;
+        const suporteVisualizaApenasTicketsProprios = typeof body.suporteVisualizaApenasTicketsProprios === "boolean"
+            ? body.suporteVisualizaApenasTicketsProprios
+            : true;
 
         if (!fantasia || fantasia.length > 160 || cnpj.length !== 14) {
             return criarRespostaApi(false, "Informe nome da empresa e CNPJ com 14 dígitos.", null, 400);
@@ -239,9 +247,10 @@ export async function POST(request: NextRequest) {
                     telefone,
                     ativo,
                     exigir_vinculo_produto,
+                    suporte_visualiza_apenas_tickets_proprios,
                     criado_por
                 )
-                values ($1, $2, $3, $4, $5, $6, $7)
+                values ($1, $2, $3, $4, $5, $6, $7, $8)
                 returning id,
                     fantasia,
                     cnpj,
@@ -249,10 +258,11 @@ export async function POST(request: NextRequest) {
                     telefone,
                     ativo,
                     exigir_vinculo_produto,
+                    suporte_visualiza_apenas_tickets_proprios,
                     criado_em,
                     atualizado_em
             `,
-            [fantasia, cnpj, email, telefone, ativo, exigirVinculoProduto, idUsuario]
+            [fantasia, cnpj, email, telefone, ativo, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, idUsuario]
         );
 
         await consultarBancoDados(
@@ -320,6 +330,9 @@ export async function PUT(request: NextRequest) {
         const exigirVinculoProduto = typeof body.exigirVinculoProduto === "boolean"
             ? body.exigirVinculoProduto
             : false;
+        const suporteVisualizaApenasTicketsProprios = typeof body.suporteVisualizaApenasTicketsProprios === "boolean"
+            ? body.suporteVisualizaApenasTicketsProprios
+            : true;
 
         if (!Number.isInteger(id) || id <= 0) {
             return criarRespostaApi(false, "Informe uma empresa válida para atualização.", null, 400);
@@ -347,9 +360,10 @@ export async function PUT(request: NextRequest) {
                     telefone = $4,
                     ativo = $5,
                     exigir_vinculo_produto = $6,
-                    atualizado_por = $7,
+                    suporte_visualiza_apenas_tickets_proprios = $7,
+                    atualizado_por = $8,
                     atualizado_em = now()
-                where id = $8
+                where id = $9
                 returning id,
                     fantasia,
                     cnpj,
@@ -357,10 +371,11 @@ export async function PUT(request: NextRequest) {
                     telefone,
                     ativo,
                     exigir_vinculo_produto,
+                    suporte_visualiza_apenas_tickets_proprios,
                     criado_em,
                     atualizado_em
             `,
-            [fantasia, cnpj, email, telefone, ativo, exigirVinculoProduto, idUsuario, id]
+            [fantasia, cnpj, email, telefone, ativo, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, idUsuario, id]
         );
 
         if (!resultado.rows[0]) {
