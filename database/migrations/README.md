@@ -246,3 +246,44 @@ Regras importantes:
 - Usuários vinculados a tickets como responsável, agente, criador ou fechador não podem ser removidos do banco.
 - Produtos vinculados a tickets não podem ser removidos do banco.
 - As restrições são garantidas através de foreign keys com `ON DELETE RESTRICT`.
+
+## Tabela `ticket_mensagens`
+
+Criada por `010_criar_tabela_ticket_mensagens.sql`.
+
+A tabela `ticket_mensagens` armazena as mensagens trocadas entre usuários e agentes dentro de um ticket.
+
+Essa estrutura representa o chat/histórico de comunicação do ticket.
+
+Campos:
+
+- `id`: chave primária.
+- `ticket_id`: ticket vinculado à mensagem.
+- `conteudo`: conteúdo da mensagem enviado pelo editor rich text (`React Quill`).
+- `enviado_por`: usuário responsável pelo envio da mensagem.
+- `enviado_em`: data e hora do envio da mensagem.
+
+Índices e relacionamentos:
+
+- `ticket_mensagens_pkey`: chave primária em `id`.
+- `ticket_mensagens_ticket_id_fkey`: FK de `ticket_id` para `tickets.id`.
+- `ticket_mensagens_enviado_por_fkey`: FK de `enviado_por` para `usuarios.id`.
+
+Índices auxiliares:
+
+- `ticket_mensagens_ticket_id_idx`: índice para consultas por ticket.
+- `ticket_mensagens_enviado_por_idx`: índice para consultas por usuário remetente.
+- `ticket_mensagens_enviado_em_idx`: índice para consultas ordenadas por data de envio.
+
+Regras importantes:
+
+- Tickets que possuem mensagens vinculadas não podem ser removidos do banco.
+- Usuários que possuem mensagens vinculadas não podem ser removidos do banco.
+- O campo `conteudo` utiliza `TEXT` para suportar HTML vindo do editor rich text.
+- A ordenação padrão das mensagens deve considerar `enviado_em`.
+- A tabela está preparada para futura implementação de:
+  - timeline de ticket
+  - chat em tempo real
+  - anexos
+  - mensagens internas
+  - respostas automatizadas por IA
