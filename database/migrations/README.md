@@ -198,3 +198,51 @@ Campos:
 ## Regra de vínculo usuário/produto
 
 A tabela `usuarios_produtos` representa apenas vínculos existentes. Não há campo `ativo` e não há campo `atualizado_em`; para remover um vínculo, o registro deve ser excluído fisicamente.
+
+## Tabela `tickets`
+
+Criada por `009_criar_tabela_tickets.sql`.
+
+A tabela `tickets` armazena as informações gerais dos chamados/tickets do sistema.
+
+Campos:
+
+- `id`: chave primária.
+- `empresa_id`: empresa vinculada ao ticket.
+- `produto_id`: produto vinculado ao ticket.
+- `responsavel_id`: usuário responsável pelo ticket.
+- `agente_id`: usuário agente do ticket, opcional.
+- `status`: status atual do ticket com até 20 caracteres.
+- `prioridade`: prioridade do ticket com até 20 caracteres.
+- `criado_em`: data de criação do ticket.
+- `criado_por`: usuário que criou o ticket.
+- `ultima_atualizacao_em`: data da última atualização do ticket.
+- `fechado_em`: data de fechamento do ticket, opcional.
+- `fechado_por`: usuário responsável pelo fechamento do ticket, opcional.
+
+Índices e relacionamentos:
+
+- `tickets_pkey`: chave primária em `id`.
+- `tickets_empresa_id_fkey`: FK de `empresa_id` para `empresas.id`.
+- `tickets_produto_id_fkey`: FK de `produto_id` para `produtos.id`.
+- `tickets_responsavel_id_fkey`: FK de `responsavel_id` para `usuarios.id`.
+- `tickets_agente_id_fkey`: FK de `agente_id` para `usuarios.id`.
+- `tickets_criado_por_fkey`: FK de `criado_por` para `usuarios.id`.
+- `tickets_fechado_por_fkey`: FK de `fechado_por` para `usuarios.id`.
+
+Índices auxiliares:
+
+- `tickets_empresa_id_idx`: índice para consultas por empresa.
+- `tickets_produto_id_idx`: índice para consultas por produto.
+- `tickets_responsavel_id_idx`: índice para consultas por responsável.
+- `tickets_agente_id_idx`: índice para consultas por agente.
+- `tickets_status_idx`: índice para consultas por status.
+- `tickets_prioridade_idx`: índice para consultas por prioridade.
+- `tickets_criado_em_idx`: índice para consultas por data de criação.
+
+Regras importantes:
+
+- Empresas vinculadas a tickets não podem ser removidas do banco.
+- Usuários vinculados a tickets como responsável, agente, criador ou fechador não podem ser removidos do banco.
+- Produtos vinculados a tickets não podem ser removidos do banco.
+- As restrições são garantidas através de foreign keys com `ON DELETE RESTRICT`.
