@@ -281,9 +281,3 @@ Regras importantes:
 - Usuários que possuem mensagens vinculadas não podem ser removidos do banco.
 - O campo `conteudo` utiliza `TEXT` para suportar HTML vindo do editor rich text.
 - A ordenação padrão das mensagens deve considerar `enviado_em`.
-- A tabela está preparada para futura implementação de:
-  - timeline de ticket
-  - chat em tempo real
-  - anexos
-  - mensagens internas
-  - respostas automatizadas por IA
