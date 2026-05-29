@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { obterClienteBancoDados } from "@/services/database";
+import { consultarBancoDados, obterClienteBancoDados } from "@/services/database";
 import { enviarEmail } from "@/services/email";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
@@ -31,6 +31,26 @@ type AgenteNotificacaoTicket = {
     email: string;
 };
 
+type TicketListado = {
+    id: number;
+    titulo: string;
+    responsavel_id: number;
+    agente_id: number | null;
+    empresa_nome: string;
+    produto_nome: string;
+    responsavel_nome: string;
+    agente_nome: string | null;
+    status: string;
+    prioridade: string;
+    criado_em: Date;
+    ultima_atualizacao_em: Date;
+};
+
+type ContextoListagemTicket = {
+    suporte_visualiza_apenas_tickets_proprios: boolean;
+    perfil_nome: string | null;
+};
+
 const STATUS_INICIAL_TICKET = "pendente_vinculo_agente";
 const prioridadesPermitidas = ["baixa", "media", "alta", "muito_alta"];
 
@@ -38,6 +58,14 @@ function normalizarId(valor: unknown): number | null {
     const id = Number(valor);
 
     return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function validarIdPositivo(valor: number): boolean {
+    return Number.isInteger(valor) && valor > 0;
+}
+
+function normalizarNomePerfil(nome: string | null): string {
+    return (nome || "").trim().toLowerCase();
 }
 
 function obterTextoMensagem(conteudoHtml: string): string {
@@ -120,6 +148,124 @@ function montarHtmlNovoTicket({
             </div>
         </div>
     `;
+}
+
+/**
+ * Endpoint GET de tickets.
+ * Lista tickets da empresa de navegação respeitando vínculo, permissão e regras.
+ */
+export async function GET(request: NextRequest) {
+    try {
+        // 1. Valida se o usuário possui permissão para visualizar tickets.
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "ticket",
+            acao: "visualizar",
+        });
+
+        if (respostaPermissao) {
+            return respostaPermissao;
+        }
+
+        // 2. Identifica o usuário logado para aplicar vínculo e escopo da listagem.
+        const idUsuario = obterIdUsuarioAutenticado(request);
+
+        if (!idUsuario) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        // 3. Valida a empresa de navegação enviada pela tela.
+        const empresaNavegacaoId = Number(request.nextUrl.searchParams.get("empresaNavegacaoId"));
+
+        if (!validarIdPositivo(empresaNavegacaoId)) {
+            return criarRespostaApi(false, "Informe uma empresa de navegação válida para listar tickets.", null, 400);
+        }
+
+        // 4. Confirma se a empresa pertence ao usuário autenticado.
+        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
+            request: request,
+            idEmpresa: empresaNavegacaoId,
+        });
+
+        if (!empresaPertenceAoUsuario) {
+            return criarRespostaApi(false, "Empresa não vinculada ao usuário autenticado.", null, 403);
+        }
+
+        // 5. Busca somente os dados necessários para decidir o escopo em TypeScript.
+        const resultadoContexto = await consultarBancoDados<ContextoListagemTicket>(
+            `
+                select
+                    e.suporte_visualiza_apenas_tickets_proprios,
+                    p.nome as perfil_nome
+                from empresas e
+                inner join usuarios u on u.id = $2
+                left join perfil p on p.id = u.perfil_id
+                where e.id = $1
+                    and e.ativo = true
+                limit 1
+            `,
+            [empresaNavegacaoId, idUsuario]
+        );
+        const contexto = resultadoContexto.rows[0];
+
+        if (!contexto) {
+            return criarRespostaApi(false, "Empresa não encontrada ou inativa.", null, 404);
+        }
+
+        // 6. Carrega todos os tickets da empresa; as regras de visibilidade são aplicadas abaixo em TS.
+        const resultadoTickets = await consultarBancoDados<TicketListado>(
+            `
+                select
+                    t.id,
+                    t.titulo,
+                    t.responsavel_id,
+                    t.agente_id,
+                    e.fantasia as empresa_nome,
+                    p.nome as produto_nome,
+                    responsavel.nome as responsavel_nome,
+                    agente.nome as agente_nome,
+                    t.status,
+                    t.prioridade,
+                    t.criado_em,
+                    t.ultima_atualizacao_em
+                from tickets t
+                inner join empresas e on e.id = t.empresa_id
+                inner join produtos p on p.id = t.produto_id
+                inner join usuarios responsavel on responsavel.id = t.responsavel_id
+                left join usuarios agente on agente.id = t.agente_id
+                where t.empresa_id = $1
+                order by t.criado_em desc, t.id desc
+            `,
+            [empresaNavegacaoId]
+        );
+
+        const perfilNormalizado = normalizarNomePerfil(contexto.perfil_nome);
+        const usuarioAgenteSuporte = perfilNormalizado === "agente de suporte";
+        const usuarioClienteManager = perfilNormalizado === "cliente manager";
+        let ticketsVisiveis = resultadoTickets.rows;
+
+        // 7. Agente de suporte: pode ver todos ou apenas os próprios conforme regra da empresa.
+        if (usuarioAgenteSuporte && contexto.suporte_visualiza_apenas_tickets_proprios) {
+            ticketsVisiveis = ticketsVisiveis.filter((ticket) => (
+                ticket.agente_id === idUsuario
+                || ticket.status === STATUS_INICIAL_TICKET
+            ));
+        }
+
+        // 8. Cliente Manager visualiza todos os tickets da empresa, então não aplica filtro adicional.
+        if (!usuarioAgenteSuporte && !usuarioClienteManager) {
+            // 9. Cliente comum visualiza somente tickets em que ele é o responsável.
+            ticketsVisiveis = ticketsVisiveis.filter((ticket) => ticket.responsavel_id === idUsuario);
+        }
+
+        return criarRespostaApi(
+            true,
+            "Tickets listados com sucesso.",
+            ticketsVisiveis
+        );
+    } catch {
+        return criarRespostaApi(false, "Não foi possível listar os tickets.", null, 500);
+    }
 }
 
 /**

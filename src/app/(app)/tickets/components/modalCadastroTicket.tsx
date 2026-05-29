@@ -318,7 +318,7 @@ export default function ModalCadastroTicket({
                 responsavel: usuarioInformado?.agenteSuporte ? null : opcaoUsuarioLogado,
                 agente: null,
                 status: statusInicialTicket,
-                prioridade: opcoesPrioridade[1],
+                prioridade: null,
                 criadoPor: opcaoUsuarioLogado,
             }));
         } catch (erro) {

@@ -1,20 +1,140 @@
 "use client";
 
 import { Botao } from "@/components/inputs/button";
-import { useState } from "react";
+import ModalResposta from "@/components/modals/responseModal";
+import { ColunaTabelaDados, TabelaDados } from "@/components/tables/dataTable";
+import { requisitarAPI } from "@/utils/api";
+import { useCallback, useEffect, useState } from "react";
 import { FaPlus } from "react-icons/fa";
 import ModalCadastroTicket from "./components/modalCadastroTicket";
+
+type TicketTabela = {
+    id: number;
+    titulo: string;
+    empresa_nome: string;
+    produto_nome: string;
+    responsavel_nome: string;
+    agente_nome: string | null;
+    status: string;
+    prioridade: string;
+    criado_em: string;
+    ultima_atualizacao_em: string;
+};
+
+const CHAVE_EMPRESA_NAVEGACAO = "empresaNavegacaoId";
+
+const rotulosStatus: Record<string, string> = {
+    pendente_vinculo_agente: "Pendente vínculo agente",
+    com_agente: "Com agente",
+    com_cliente: "Com cliente",
+    encerrado_resolvido: "Encerrado resolvido",
+    encerrado_nao_resolvido: "Encerrado não resolvido",
+};
+
+const rotulosPrioridade: Record<string, string> = {
+    baixa: "Baixa",
+    media: "Média",
+    alta: "Alta",
+    muito_alta: "Muito alta",
+};
+
+function formatarDataHora(valor: string): string {
+    const data = new Date(valor);
+
+    if (Number.isNaN(data.getTime())) {
+        return "-";
+    }
+
+    return new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "short",
+    }).format(data);
+}
 
 /**
  * Página inicial do menu Tickets.
  * Use como ponto de entrada para a gestão de tickets da área autenticada.
  */
 export default function PaginaTickets() {
+    const [tickets, setTickets] = useState<TicketTabela[]>([]);
+    const [carregando, setCarregando] = useState(true);
+    const [mensagemResposta, setMensagemResposta] = useState("");
     const [modalCadastroAberto, setModalCadastroAberto] = useState(false);
+
+    const colunas: ColunaTabelaDados<TicketTabela>[] = [
+        { chave: "titulo", titulo: "Título" },
+        { chave: "empresa_nome", titulo: "Empresa" },
+        { chave: "produto_nome", titulo: "Produto" },
+        { chave: "responsavel_nome", titulo: "Responsável" },
+        {
+            chave: "agente_nome",
+            titulo: "Agente",
+            renderizar: (ticket) => ticket.agente_nome || "-",
+        },
+        {
+            chave: "status",
+            titulo: "Status",
+            renderizar: (ticket) => (
+                <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">
+                    {rotulosStatus[ticket.status] || ticket.status}
+                </span>
+            ),
+        },
+        {
+            chave: "prioridade",
+            titulo: "Prioridade",
+            renderizar: (ticket) => rotulosPrioridade[ticket.prioridade] || ticket.prioridade,
+        },
+        {
+            chave: "criado_em",
+            titulo: "Criado em",
+            renderizar: (ticket) => formatarDataHora(ticket.criado_em),
+        },
+    ];
+
+    /**
+     * Carrega tickets da empresa de navegação selecionada.
+     */
+    const carregarTickets = useCallback(async () => {
+        setCarregando(true);
+        setMensagemResposta("");
+
+        try {
+            const empresaNavegacaoId = localStorage.getItem(CHAVE_EMPRESA_NAVEGACAO);
+
+            if (!empresaNavegacaoId) {
+                setTickets([]);
+                setMensagemResposta("Selecione uma empresa de navegação.");
+                return;
+            }
+
+            const resposta = await requisitarAPI(`/api/tickets?empresaNavegacaoId=${empresaNavegacaoId}`, {
+                method: "GET",
+            });
+
+            setTickets(Array.isArray(resposta.dados) ? resposta.dados as TicketTabela[] : []);
+        } catch (erro) {
+            const mensagemErro = erro instanceof Error
+                ? erro.message
+                : "Não foi possível carregar os tickets.";
+
+            setMensagemResposta(mensagemErro);
+        } finally {
+            setCarregando(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const carregamentoInicial = window.setTimeout(() => {
+            void carregarTickets();
+        }, 0);
+
+        return () => window.clearTimeout(carregamentoInicial);
+    }, [carregarTickets]);
 
     return (
         <div className="w-full">
-            <div className="rounded-lg border border-[#dce3ec] bg-white p-6">
+            <div className="mb-6 rounded-lg border border-[#dce3ec] bg-white p-6">
                 <div className="grid gap-4 md:grid-cols-12 md:items-center">
                     <div className="md:col-span-8 lg:col-span-10">
                         <h1 className="text-2xl font-bold text-slate-900">Tickets</h1>
@@ -29,8 +149,8 @@ export default function PaginaTickets() {
                             label="Novo Ticket"
                             icon={<FaPlus size={14} />}
                             onClick={() => setModalCadastroAberto(true)}
-                            disabled={false}
-                            loading={false}
+                            disabled={carregando}
+                            loading={carregando}
                             variant="outline-primary"
                             type="button"
                             className="w-full"
@@ -39,12 +159,31 @@ export default function PaginaTickets() {
                 </div>
             </div>
 
+            <TabelaDados
+                colunas={colunas}
+                dados={tickets}
+                carregando={carregando}
+                mensagemSemDados="Nenhum ticket cadastrado."
+                placeholderFiltro="Procurar por ticket"
+                usaExcel={true}
+                nomeArquivoExcel="tickets"
+            />
+
             {modalCadastroAberto && (
                 <ModalCadastroTicket
                     aberto={modalCadastroAberto}
-                    aoFechar={() => setModalCadastroAberto(false)}
+                    aoFechar={() => {
+                        setModalCadastroAberto(false);
+                        void carregarTickets();
+                    }}
                 />
             )}
+
+            <ModalResposta
+                isOpen={Boolean(mensagemResposta)}
+                message={mensagemResposta}
+                onClose={() => setMensagemResposta("")}
+            />
         </div>
     );
 }
