@@ -172,8 +172,9 @@ export async function GET(request: NextRequest) {
             `
         );
 
-        const usuariosAtivos = resultadoUsuarios.rows.filter((usuario) => usuario.ativo);
-        const agentesSuporte = usuariosAtivos.filter((usuario) => usuario.agente_suporte);
+        const usuariosAtivos = resultadoUsuarios.rows.filter((usuario) => usuario.ativo && !usuario.agente_suporte);
+        const usuariosAtivosComAgentes = resultadoUsuarios.rows.filter((usuario) => usuario.ativo);
+        const agentesSuporte = usuariosAtivosComAgentes.filter((usuario) => usuario.agente_suporte);
 
         return criarRespostaApi<DadosFormularioEmpresaTicket>(
             true,

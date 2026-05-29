@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./cssGlobal.css";
+import "quill/dist/quill.snow.css";
 
 export const metadata: Metadata = {
   title: "GSD Desk",

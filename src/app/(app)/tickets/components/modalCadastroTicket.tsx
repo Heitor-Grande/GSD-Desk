@@ -6,7 +6,7 @@ import { Seletor } from "@/components/inputs/select";
 import { ModalCarregamento } from "@/components/modals/loading";
 import ModalResposta from "@/components/modals/responseModal";
 import { requisitarAPI } from "@/utils/api";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "react-bootstrap";
 import { FaSave, FaTimes } from "react-icons/fa";
 
@@ -67,6 +67,8 @@ type DadosFormularioTicket = {
     criadoPor: OpcaoSeletor | null;
     fechadoEm: string;
     fechadoPor: OpcaoSeletor | null;
+    mensagemInicial: string;
+    textoMensagemInicial: string;
 };
 
 type ModalCadastroTicketProps = {
@@ -104,6 +106,8 @@ function criarEstadoInicialTicket(): DadosFormularioTicket {
         criadoPor: null,
         fechadoEm: "",
         fechadoPor: null,
+        mensagemInicial: "",
+        textoMensagemInicial: "",
     };
 }
 
@@ -118,6 +122,97 @@ function criarOpcaoUsuario(usuario: UsuarioFormularioApi | UsuarioAutenticadoApi
 
 function obterOpcaoUsuarioAutenticado(usuario: UsuarioAutenticadoApi | null): OpcaoSeletor | null {
     return usuario ? criarOpcaoUsuario(usuario) : null;
+}
+
+type EditorMensagemTicketProps = {
+    id: string;
+    value: string;
+    disabled: boolean;
+    onChange: (html: string, texto: string) => void;
+};
+
+/**
+ * Editor rico baseado em Quill para mensagens do chat do ticket.
+ */
+function EditorMensagemTicket({
+    id,
+    value,
+    disabled,
+    onChange,
+}: EditorMensagemTicketProps) {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const editorRef = useRef<import("quill").default | null>(null);
+    const onChangeRef = useRef(onChange);
+
+    useEffect(() => {
+        onChangeRef.current = onChange;
+    }, [onChange]);
+
+    useEffect(() => {
+        let componenteMontado = true;
+
+        async function inicializarEditor() {
+            if (!containerRef.current || editorRef.current) {
+                return;
+            }
+
+            const Quill = (await import("quill")).default;
+
+            if (!componenteMontado || !containerRef.current) {
+                return;
+            }
+
+            const editor = new Quill(containerRef.current, {
+                theme: "snow",
+                placeholder: "Digite uma mensagem",
+                modules: {
+                    toolbar: [
+                        ["bold", "italic", "underline"],
+                        [{ list: "ordered" }, { list: "bullet" }],
+                        ["link"],
+                        ["clean"],
+                    ],
+                },
+            });
+
+            editor.root.innerHTML = value;
+            editor.enable(!disabled);
+            editor.on("text-change", () => {
+                onChangeRef.current(editor.root.innerHTML, editor.getText().trim());
+            });
+            editorRef.current = editor;
+        }
+
+        void inicializarEditor();
+
+        return () => {
+            componenteMontado = false;
+        };
+    }, [disabled, value]);
+
+    useEffect(() => {
+        if (!editorRef.current) {
+            return;
+        }
+
+        editorRef.current.enable(!disabled);
+    }, [disabled]);
+
+    useEffect(() => {
+        if (!editorRef.current || editorRef.current.root.innerHTML === value) {
+            return;
+        }
+
+        editorRef.current.root.innerHTML = value;
+    }, [value]);
+
+    return (
+        <div
+            id={id}
+            ref={containerRef}
+            className="min-h-32 bg-white text-sm text-slate-900"
+        />
+    );
 }
 
 /**
@@ -137,6 +232,7 @@ export default function ModalCadastroTicket({
     const [usuarioAutenticado, setUsuarioAutenticado] = useState<UsuarioAutenticadoApi | null>(null);
     const [carregando, setCarregando] = useState(false);
     const [mensagemResposta, setMensagemResposta] = useState("");
+    const [ticketCriadoComSucesso, setTicketCriadoComSucesso] = useState(false);
     const [abaAtiva, setAbaAtiva] = useState<AbaTicket>("informacoesGerais");
 
     function atualizarCampoFormulario(campo: keyof DadosFormularioTicket, valor: string | OpcaoSeletor | null) {
@@ -154,6 +250,7 @@ export default function ModalCadastroTicket({
         setOpcoesUsuarioHistorico([]);
         setUsuarioAutenticado(null);
         setMensagemResposta("");
+        setTicketCriadoComSucesso(false);
         setCarregando(false);
         setAbaAtiva("informacoesGerais");
     }
@@ -218,6 +315,9 @@ export default function ModalCadastroTicket({
                 ...estadoAtual,
                 responsavel: usuarioInformado?.agenteSuporte ? null : opcaoUsuarioLogado,
                 agente: usuarioInformado?.agenteSuporte ? opcaoUsuarioLogado : null,
+                status: opcoesStatus[0],
+                prioridade: opcoesPrioridade[1],
+                criadoPor: opcaoUsuarioLogado,
             }));
         } catch (erro) {
             const mensagemErro = erro instanceof Error
@@ -276,7 +376,7 @@ export default function ModalCadastroTicket({
         }
     }, [carregarDadosEmpresa]);
 
-    function salvarTicket(event: FormEvent<HTMLFormElement>) {
+    async function salvarTicket(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
         const titulo = formulario.titulo.trim();
@@ -291,12 +391,46 @@ export default function ModalCadastroTicket({
             return;
         }
 
-        if (usuarioAutenticado?.agenteSuporte && (!formulario.status || !formulario.prioridade)) {
+        if (!formulario.status || !formulario.prioridade) {
             setMensagemResposta("Informe status e prioridade para criar o ticket.");
             return;
         }
 
-        aoFechar();
+        if (!formulario.textoMensagemInicial) {
+            setMensagemResposta("Informe a mensagem inicial para abrir o ticket.");
+            setAbaAtiva("chat");
+            return;
+        }
+
+        setCarregando(true);
+        setMensagemResposta("");
+
+        try {
+            const resposta = await requisitarAPI("/api/tickets", {
+                method: "POST",
+                body: {
+                    titulo: titulo,
+                    empresaId: formulario.empresa.value,
+                    produtoId: formulario.produto.value,
+                    responsavelId: formulario.responsavel.value,
+                    agenteId: formulario.agente?.value ?? null,
+                    status: formulario.status.value,
+                    prioridade: formulario.prioridade.value,
+                    mensagemInicial: formulario.mensagemInicial,
+                },
+            });
+
+            setTicketCriadoComSucesso(true);
+            setMensagemResposta(resposta.msg || "Ticket criado com sucesso.");
+        } catch (erro) {
+            const mensagemErro = erro instanceof Error
+                ? erro.message
+                : "NÃ£o foi possÃ­vel criar o ticket.";
+
+            setMensagemResposta(mensagemErro);
+        } finally {
+            setCarregando(false);
+        }
     }
 
     useEffect(() => {
@@ -533,12 +667,20 @@ export default function ModalCadastroTicket({
                                     <label className="block text-sm font-semibold text-slate-700" htmlFor="ticket-chat-mensagem">
                                         Mensagem
                                     </label>
-                                    <textarea
-                                        id="ticket-chat-mensagem"
-                                        className="mt-1 min-h-24 w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-                                        placeholder="Digite uma mensagem"
-                                        disabled={carregando}
-                                    />
+                                    <div className="mt-1 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                                        <EditorMensagemTicket
+                                            id="ticket-chat-mensagem"
+                                            value={formulario.mensagemInicial}
+                                            disabled={carregando}
+                                            onChange={(html, texto) => {
+                                                setFormulario((estadoAtual) => ({
+                                                    ...estadoAtual,
+                                                    mensagemInicial: html,
+                                                    textoMensagemInicial: texto,
+                                                }));
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -580,7 +722,13 @@ export default function ModalCadastroTicket({
             <ModalResposta
                 isOpen={aberto && Boolean(mensagemResposta)}
                 message={mensagemResposta}
-                onClose={() => setMensagemResposta("")}
+                onClose={() => {
+                    setMensagemResposta("");
+
+                    if (ticketCriadoComSucesso) {
+                        aoFechar();
+                    }
+                }}
             />
         </>
     );

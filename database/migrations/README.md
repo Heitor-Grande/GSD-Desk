@@ -201,13 +201,14 @@ A tabela `usuarios_produtos` representa apenas vínculos existentes. Não há ca
 
 ## Tabela `tickets`
 
-Criada por `009_criar_tabela_tickets.sql`.
+Criada por `009_criar_tabela_tickets.sql`. O campo `titulo` também é garantido por `011_adicionar_titulo_tickets.sql` em bases já existentes.
 
 A tabela `tickets` armazena as informações gerais dos chamados/tickets do sistema.
 
 Campos:
 
 - `id`: chave primária.
+- `titulo`: título curto do ticket.
 - `empresa_id`: empresa vinculada ao ticket.
 - `produto_id`: produto vinculado ao ticket.
 - `responsavel_id`: usuário responsável pelo ticket.

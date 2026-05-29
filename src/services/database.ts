@@ -1,4 +1,4 @@
-import { Pool, QueryResult, QueryResultRow } from "pg";
+import { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 
 const conexaoBancoDados = new Pool({
     host: process.env.POSTGRES_HOST,
@@ -18,4 +18,12 @@ export async function consultarBancoDados<T extends QueryResultRow = QueryResult
     parametros: unknown[] = []
 ): Promise<QueryResult<T>> {
     return conexaoBancoDados.query<T>(query, parametros);
+}
+
+/**
+ * Obtém um cliente dedicado do pool para fluxos transacionais.
+ * Use quando várias queries precisarem compartilhar BEGIN/COMMIT/ROLLBACK.
+ */
+export async function obterClienteBancoDados(): Promise<PoolClient> {
+    return conexaoBancoDados.connect();
 }

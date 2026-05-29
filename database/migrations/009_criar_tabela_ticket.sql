@@ -1,6 +1,8 @@
 create table if not exists public.tickets (
     id bigserial not null,
 
+    titulo varchar(50) not null,
+
     empresa_id bigint not null,
     produto_id bigint not null,
 
