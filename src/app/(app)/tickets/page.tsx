@@ -7,6 +7,7 @@ import { requisitarAPI } from "@/utils/api";
 import { useCallback, useEffect, useState } from "react";
 import { FaPlus } from "react-icons/fa";
 import ModalCadastroTicket from "./components/modalCadastroTicket";
+import ModalDetalheTicket from "./components/modalDetalheTicket";
 
 type TicketTabela = {
     id: number;
@@ -60,6 +61,7 @@ export default function PaginaTickets() {
     const [carregando, setCarregando] = useState(true);
     const [mensagemResposta, setMensagemResposta] = useState("");
     const [modalCadastroAberto, setModalCadastroAberto] = useState(false);
+    const [idTicketSelecionado, setIdTicketSelecionado] = useState<number | null>(null);
 
     const colunas: ColunaTabelaDados<TicketTabela>[] = [
         { chave: "titulo", titulo: "Título" },
@@ -132,6 +134,17 @@ export default function PaginaTickets() {
         return () => window.clearTimeout(carregamentoInicial);
     }, [carregarTickets]);
 
+    function abrirTicketSelecionado(idTicket: string | number | null) {
+        const idNormalizado = Number(idTicket);
+
+        if (!Number.isInteger(idNormalizado) || idNormalizado <= 0) {
+            setMensagemResposta("Não foi possível identificar o ticket selecionado.");
+            return;
+        }
+
+        setIdTicketSelecionado(idNormalizado);
+    }
+
     return (
         <div className="w-full">
             <div className="mb-6 rounded-lg border border-[#dce3ec] bg-white p-6">
@@ -167,6 +180,8 @@ export default function PaginaTickets() {
                 placeholderFiltro="Procurar por ticket"
                 usaExcel={true}
                 nomeArquivoExcel="tickets"
+                usaClickLinha={true}
+                aoClicarLinha={abrirTicketSelecionado}
             />
 
             {modalCadastroAberto && (
@@ -174,6 +189,17 @@ export default function PaginaTickets() {
                     aberto={modalCadastroAberto}
                     aoFechar={() => {
                         setModalCadastroAberto(false);
+                        void carregarTickets();
+                    }}
+                />
+            )}
+
+            {idTicketSelecionado && (
+                <ModalDetalheTicket
+                    aberto={Boolean(idTicketSelecionado)}
+                    idTicket={idTicketSelecionado}
+                    aoFechar={() => {
+                        setIdTicketSelecionado(null);
                         void carregarTickets();
                     }}
                 />

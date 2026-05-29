@@ -17,6 +17,16 @@ type CorpoCadastroTicket = {
     mensagemInicial?: unknown;
 };
 
+type CorpoAtualizacaoTicket = {
+    id?: unknown;
+    empresaNavegacaoId?: unknown;
+    titulo?: unknown;
+    responsavelId?: unknown;
+    agenteId?: unknown;
+    status?: unknown;
+    prioridade?: unknown;
+};
+
 type ResultadoId = {
     id: number;
 };
@@ -46,12 +56,37 @@ type TicketListado = {
     ultima_atualizacao_em: Date;
 };
 
+type TicketDetalhado = TicketListado & {
+    empresa_id: number;
+    produto_id: number;
+    criado_por: number;
+    criado_por_nome: string;
+    fechado_em: Date | null;
+    fechado_por: number | null;
+    fechado_por_nome: string | null;
+};
+
+type MensagemTicketDetalhe = {
+    id: number;
+    conteudo: string;
+    enviado_por: number;
+    enviado_por_nome: string;
+    enviado_em: Date;
+};
+
 type ContextoListagemTicket = {
     suporte_visualiza_apenas_tickets_proprios: boolean;
     perfil_nome: string | null;
 };
 
 const STATUS_INICIAL_TICKET = "pendente_vinculo_agente";
+const statusPermitidos = [
+    STATUS_INICIAL_TICKET,
+    "com_agente",
+    "com_cliente",
+    "encerrado_resolvido",
+    "encerrado_nao_resolvido",
+];
 const prioridadesPermitidas = ["baixa", "media", "alta", "muito_alta"];
 
 function normalizarId(valor: unknown): number | null {
@@ -66,6 +101,32 @@ function validarIdPositivo(valor: number): boolean {
 
 function normalizarNomePerfil(nome: string | null): string {
     return (nome || "").trim().toLowerCase();
+}
+
+function usuarioPodeVisualizarTicket({
+    ticket,
+    idUsuario,
+    contexto,
+}: {
+    ticket: Pick<TicketListado, "responsavel_id" | "agente_id" | "status">;
+    idUsuario: number;
+    contexto: ContextoListagemTicket;
+}): boolean {
+    const perfilNormalizado = normalizarNomePerfil(contexto.perfil_nome);
+    const usuarioAgenteSuporte = perfilNormalizado === "agente de suporte";
+    const usuarioClienteManager = perfilNormalizado === "cliente manager";
+
+    if (usuarioAgenteSuporte) {
+        return !contexto.suporte_visualiza_apenas_tickets_proprios
+            || ticket.agente_id === idUsuario
+            || ticket.status === STATUS_INICIAL_TICKET;
+    }
+
+    if (usuarioClienteManager) {
+        return true;
+    }
+
+    return ticket.responsavel_id === idUsuario;
 }
 
 function obterTextoMensagem(conteudoHtml: string): string {
@@ -212,6 +273,86 @@ export async function GET(request: NextRequest) {
             return criarRespostaApi(false, "Empresa não encontrada ou inativa.", null, 404);
         }
 
+        const ticketIdDetalhe = Number(request.nextUrl.searchParams.get("id"));
+
+        if (request.nextUrl.searchParams.has("id")) {
+            if (!validarIdPositivo(ticketIdDetalhe)) {
+                return criarRespostaApi(false, "Informe um ticket válido para consulta.", null, 400);
+            }
+
+            // 6. Quando houver id, carrega o ticket completo para abertura do modal.
+            const resultadoTicket = await consultarBancoDados<TicketDetalhado>(
+                `
+                    select
+                        t.id,
+                        t.titulo,
+                        t.empresa_id,
+                        t.produto_id,
+                        t.responsavel_id,
+                        t.agente_id,
+                        e.fantasia as empresa_nome,
+                        p.nome as produto_nome,
+                        responsavel.nome as responsavel_nome,
+                        agente.nome as agente_nome,
+                        t.status,
+                        t.prioridade,
+                        t.criado_em,
+                        t.criado_por,
+                        criado_por.nome as criado_por_nome,
+                        t.ultima_atualizacao_em,
+                        t.fechado_em,
+                        t.fechado_por,
+                        fechado_por.nome as fechado_por_nome
+                    from tickets t
+                    inner join empresas e on e.id = t.empresa_id
+                    inner join produtos p on p.id = t.produto_id
+                    inner join usuarios responsavel on responsavel.id = t.responsavel_id
+                    inner join usuarios criado_por on criado_por.id = t.criado_por
+                    left join usuarios agente on agente.id = t.agente_id
+                    left join usuarios fechado_por on fechado_por.id = t.fechado_por
+                    where t.id = $1
+                        and t.empresa_id = $2
+                    limit 1
+                `,
+                [ticketIdDetalhe, empresaNavegacaoId]
+            );
+            const ticket = resultadoTicket.rows[0];
+
+            if (!ticket) {
+                return criarRespostaApi(false, "Ticket não encontrado para a empresa selecionada.", null, 404);
+            }
+
+            // 7. Aplica em TS a mesma regra de visibilidade usada na listagem.
+            if (!usuarioPodeVisualizarTicket({ ticket, idUsuario, contexto })) {
+                return criarRespostaApi(false, "Você não possui permissão para visualizar este ticket.", null, 403);
+            }
+
+            const resultadoMensagens = await consultarBancoDados<MensagemTicketDetalhe>(
+                `
+                    select
+                        tm.id,
+                        tm.conteudo,
+                        tm.enviado_por,
+                        u.nome as enviado_por_nome,
+                        tm.enviado_em
+                    from ticket_mensagens tm
+                    inner join usuarios u on u.id = tm.enviado_por
+                    where tm.ticket_id = $1
+                    order by tm.enviado_em desc, tm.id desc
+                `,
+                [ticketIdDetalhe]
+            );
+
+            return criarRespostaApi(
+                true,
+                "Ticket carregado com sucesso.",
+                {
+                    ticket: ticket,
+                    mensagens: resultadoMensagens.rows,
+                }
+            );
+        }
+
         // 6. Carrega todos os tickets da empresa; as regras de visibilidade são aplicadas abaixo em TS.
         const resultadoTickets = await consultarBancoDados<TicketListado>(
             `
@@ -239,24 +380,10 @@ export async function GET(request: NextRequest) {
             [empresaNavegacaoId]
         );
 
-        const perfilNormalizado = normalizarNomePerfil(contexto.perfil_nome);
-        const usuarioAgenteSuporte = perfilNormalizado === "agente de suporte";
-        const usuarioClienteManager = perfilNormalizado === "cliente manager";
-        let ticketsVisiveis = resultadoTickets.rows;
-
-        // 7. Agente de suporte: pode ver todos ou apenas os próprios conforme regra da empresa.
-        if (usuarioAgenteSuporte && contexto.suporte_visualiza_apenas_tickets_proprios) {
-            ticketsVisiveis = ticketsVisiveis.filter((ticket) => (
-                ticket.agente_id === idUsuario
-                || ticket.status === STATUS_INICIAL_TICKET
-            ));
-        }
-
-        // 8. Cliente Manager visualiza todos os tickets da empresa, então não aplica filtro adicional.
-        if (!usuarioAgenteSuporte && !usuarioClienteManager) {
-            // 9. Cliente comum visualiza somente tickets em que ele é o responsável.
-            ticketsVisiveis = ticketsVisiveis.filter((ticket) => ticket.responsavel_id === idUsuario);
-        }
+        // 7. Filtra a lista em TS conforme perfil e regra da empresa.
+        const ticketsVisiveis = resultadoTickets.rows.filter((ticket) => (
+            usuarioPodeVisualizarTicket({ ticket, idUsuario, contexto })
+        ));
 
         return criarRespostaApi(
             true,
@@ -265,6 +392,156 @@ export async function GET(request: NextRequest) {
         );
     } catch {
         return criarRespostaApi(false, "Não foi possível listar os tickets.", null, 500);
+    }
+}
+
+/**
+ * Endpoint PUT de tickets.
+ * Atualiza campos editáveis do ticket mantendo empresa e produto travados após a criação.
+ */
+export async function PUT(request: NextRequest) {
+    try {
+        // 1. Valida permissão de atualização de ticket.
+        const respostaPermissao = await verificarPermissaoAPI({
+            request: request,
+            recurso: "ticket",
+            acao: "atualizar",
+        });
+
+        if (respostaPermissao) {
+            return respostaPermissao;
+        }
+
+        // 2. Identifica o usuário e valida o corpo recebido.
+        const idUsuario = obterIdUsuarioAutenticado(request);
+
+        if (!idUsuario) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
+        }
+
+        const body = await request.json() as CorpoAtualizacaoTicket;
+        const id = normalizarId(body.id);
+        const empresaNavegacaoId = normalizarId(body.empresaNavegacaoId);
+        const titulo = validarStringComConteudo(body.titulo) ? body.titulo.trim() : "";
+        const responsavelId = normalizarId(body.responsavelId);
+        const agenteId = normalizarId(body.agenteId);
+        const status = validarStringComConteudo(body.status) ? body.status.trim() : "";
+        const prioridade = validarStringComConteudo(body.prioridade) ? body.prioridade.trim() : "";
+
+        if (!id || !empresaNavegacaoId) {
+            return criarRespostaApi(false, "Informe ticket e empresa de navegação válidos.", null, 400);
+        }
+
+        if (titulo.length < 5 || titulo.length > 50) {
+            return criarRespostaApi(false, "O título deve ter entre 5 e 50 caracteres.", null, 400);
+        }
+
+        if (!responsavelId) {
+            return criarRespostaApi(false, "Informe um responsável válido para o ticket.", null, 400);
+        }
+
+        if (!statusPermitidos.includes(status) || !prioridadesPermitidas.includes(prioridade)) {
+            return criarRespostaApi(false, "Informe status e prioridade válidos para atualizar o ticket.", null, 400);
+        }
+
+        // 3. Confirma vínculo do usuário com a empresa de navegação.
+        const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
+            request: request,
+            idEmpresa: empresaNavegacaoId,
+        });
+
+        if (!empresaPertenceAoUsuario) {
+            return criarRespostaApi(false, "Empresa não vinculada ao usuário autenticado.", null, 403);
+        }
+
+        // 4. Valida se o ticket pertence à empresa e se responsáveis/agentes são coerentes com seus perfis.
+        const resultadoValidacao = await consultarBancoDados<{
+            ticket_existe: boolean;
+            responsavel_valido: boolean;
+            agente_valido: boolean;
+        }>(
+            `
+                select
+                    exists (
+                        select 1
+                        from tickets t
+                        where t.id = $1
+                            and t.empresa_id = $2
+                    ) as ticket_existe,
+                    exists (
+                        select 1
+                        from usuarios_empresas ue
+                        inner join usuarios u on u.id = ue.usuario_id
+                        left join perfil p on p.id = u.perfil_id
+                        where ue.empresa_id = $2
+                            and u.id = $3
+                            and u.ativo = true
+                            and lower(coalesce(p.nome, '')) <> 'agente de suporte'
+                    ) as responsavel_valido,
+                    case
+                        when $4::bigint is null then true
+                        else exists (
+                            select 1
+                            from usuarios_empresas ue
+                            inner join usuarios u on u.id = ue.usuario_id
+                            left join perfil p on p.id = u.perfil_id
+                            where ue.empresa_id = $2
+                                and u.id = $4
+                                and u.ativo = true
+                                and lower(coalesce(p.nome, '')) = 'agente de suporte'
+                        )
+                    end as agente_valido
+            `,
+            [id, empresaNavegacaoId, responsavelId, agenteId]
+        );
+        const validacao = resultadoValidacao.rows[0];
+
+        if (!validacao?.ticket_existe) {
+            return criarRespostaApi(false, "Ticket não encontrado para a empresa selecionada.", null, 404);
+        }
+
+        if (!validacao.responsavel_valido) {
+            return criarRespostaApi(false, "O responsável deve ser um usuário ativo da empresa e não pode ser Agente de Suporte.", null, 400);
+        }
+
+        if (!validacao.agente_valido) {
+            return criarRespostaApi(false, "O agente deve ser um Agente de Suporte ativo vinculado à empresa.", null, 400);
+        }
+
+        const ticketEncerrado = status === "encerrado_resolvido" || status === "encerrado_nao_resolvido";
+
+        // 5. Atualiza somente campos editáveis; empresa e produto permanecem fixos.
+        await consultarBancoDados(
+            `
+                update tickets
+                set
+                    titulo = $1,
+                    responsavel_id = $2,
+                    agente_id = $3,
+                    status = $4,
+                    prioridade = $5,
+                    ultima_atualizacao_em = now(),
+                    fechado_em = case
+                        when $6::boolean = true then coalesce(fechado_em, now())
+                        else null
+                    end,
+                    fechado_por = case
+                        when $6::boolean = true then coalesce(fechado_por, $7)
+                        else null
+                    end
+                where id = $8
+                    and empresa_id = $9
+            `,
+            [titulo, responsavelId, agenteId, status, prioridade, ticketEncerrado, idUsuario, id, empresaNavegacaoId]
+        );
+
+        return criarRespostaApi(true, "Ticket atualizado com sucesso.", null);
+    } catch (erro) {
+        if (erroComCodigo(erro) && erro.code === "23503") {
+            return criarRespostaApi(false, "Empresa, produto ou usuário informado não foi encontrado.", null, 400);
+        }
+
+        return criarRespostaApi(false, "Não foi possível atualizar o ticket.", null, 500);
     }
 }
 
