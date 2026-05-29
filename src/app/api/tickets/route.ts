@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { obterClienteBancoDados } from "@/services/database";
+import { enviarEmail } from "@/services/email";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
@@ -12,8 +13,6 @@ type CorpoCadastroTicket = {
     empresaId?: unknown;
     produtoId?: unknown;
     responsavelId?: unknown;
-    agenteId?: unknown;
-    status?: unknown;
     prioridade?: unknown;
     mensagemInicial?: unknown;
 };
@@ -22,7 +21,17 @@ type ResultadoId = {
     id: number;
 };
 
-const statusPermitidos = ["com_agente", "com_cliente", "encerrado_resolvido", "encerrado_nao_resolvido"];
+type DadosNotificacaoTicket = {
+    empresa_nome: string;
+    produto_nome: string;
+    responsavel_nome: string;
+};
+
+type AgenteNotificacaoTicket = {
+    email: string;
+};
+
+const STATUS_INICIAL_TICKET = "pendente_vinculo_agente";
 const prioridadesPermitidas = ["baixa", "media", "alta", "muito_alta"];
 
 function normalizarId(valor: unknown): number | null {
@@ -48,12 +57,79 @@ function erroComCodigo(erro: unknown): erro is { code: string } {
         && typeof erro.code === "string";
 }
 
+function escaparHtml(valor: string): string {
+    return valor
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * Monta o HTML de notificação enviado aos agentes quando um ticket é aberto.
+ */
+function montarHtmlNovoTicket({
+    titulo,
+    empresa,
+    produto,
+    responsavel,
+}: {
+    titulo: string;
+    empresa: string;
+    produto: string;
+    responsavel: string;
+}): string {
+    const tituloSeguro = escaparHtml(titulo);
+    const empresaSegura = escaparHtml(empresa);
+    const produtoSeguro = escaparHtml(produto);
+    const responsavelSeguro = escaparHtml(responsavel);
+
+    return `
+        <div style="margin:0;padding:32px;background-color:#f4f7fb;font-family:Arial,sans-serif;color:#273142;">
+            <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #dce3ec;border-radius:8px;overflow:hidden;">
+                <div style="padding:24px;background-color:#111827;color:#e5edf8;">
+                    <h1 style="margin:0;font-size:22px;line-height:1.3;">Novo ticket aberto</h1>
+                    <p style="margin:8px 0 0;color:#94a3b8;font-size:14px;">GSD Desk</p>
+                </div>
+
+                <div style="padding:28px 24px;">
+                    <p style="margin:0 0 18px;font-size:16px;line-height:1.5;">
+                        Um novo ticket foi aberto e está pendente de vínculo com um agente.
+                    </p>
+
+                    <div style="margin:0 0 22px;padding:18px;border:1px solid #dce3ec;border-radius:8px;background-color:#f8fafc;">
+                        <p style="margin:0 0 12px;font-size:14px;line-height:1.5;">
+                            <strong style="color:#172033;">Título:</strong> ${tituloSeguro}
+                        </p>
+                        <p style="margin:0 0 12px;font-size:14px;line-height:1.5;">
+                            <strong style="color:#172033;">Empresa:</strong> ${empresaSegura}
+                        </p>
+                        <p style="margin:0 0 12px;font-size:14px;line-height:1.5;">
+                            <strong style="color:#172033;">Produto:</strong> ${produtoSeguro}
+                        </p>
+                        <p style="margin:0;font-size:14px;line-height:1.5;">
+                            <strong style="color:#172033;">Responsável:</strong> ${responsavelSeguro}
+                        </p>
+                    </div>
+
+                    <p style="margin:0;color:#6c757d;font-size:13px;line-height:1.5;">
+                        Acesse o GSD Desk para assumir o atendimento ou acompanhar a fila de tickets.
+                    </p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 /**
  * Endpoint POST de tickets.
  * Cria o ticket e sua primeira mensagem na mesma transação.
  */
 export async function POST(request: NextRequest) {
     let cliente: PoolClient | null = null;
+    let transacaoAberta = false;
+    let ticketCriado = false;
 
     try {
         const respostaPermissao = await verificarPermissaoAPI({
@@ -77,8 +153,6 @@ export async function POST(request: NextRequest) {
         const empresaId = normalizarId(body.empresaId);
         const produtoId = normalizarId(body.produtoId);
         const responsavelId = normalizarId(body.responsavelId);
-        const agenteId = normalizarId(body.agenteId);
-        const status = validarStringComConteudo(body.status) ? body.status.trim() : "";
         const prioridade = validarStringComConteudo(body.prioridade) ? body.prioridade.trim() : "";
         const mensagemInicial = validarStringComConteudo(body.mensagemInicial) ? body.mensagemInicial.trim() : "";
         const textoMensagemInicial = obterTextoMensagem(mensagemInicial);
@@ -91,8 +165,8 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Informe empresa, produto e responsável para criar o ticket.", null, 400);
         }
 
-        if (!statusPermitidos.includes(status) || !prioridadesPermitidas.includes(prioridade)) {
-            return criarRespostaApi(false, "Informe status e prioridade válidos para criar o ticket.", null, 400);
+        if (!prioridadesPermitidas.includes(prioridade)) {
+            return criarRespostaApi(false, "Informe uma prioridade válida para criar o ticket.", null, 400);
         }
 
         if (!textoMensagemInicial) {
@@ -120,7 +194,6 @@ export async function POST(request: NextRequest) {
             produto_ativo: boolean;
             produto_vinculado_usuario: boolean;
             responsavel_valido: boolean;
-            agente_valido: boolean;
         }>(
             `
                 select
@@ -158,22 +231,9 @@ export async function POST(request: NextRequest) {
                             and u.id = $4
                             and u.ativo = true
                             and lower(coalesce(p.nome, '')) <> 'agente de suporte'
-                    ) as responsavel_valido,
-                    case
-                        when $5::bigint is null then true
-                        else exists (
-                            select 1
-                            from usuarios_empresas ue
-                            inner join usuarios u on u.id = ue.usuario_id
-                            left join perfil p on p.id = u.perfil_id
-                            where ue.empresa_id = $1
-                                and u.id = $5
-                                and u.ativo = true
-                                and lower(coalesce(p.nome, '')) = 'agente de suporte'
-                        )
-                    end as agente_valido
+                    ) as responsavel_valido
             `,
-            [empresaId, produtoId, idUsuario, responsavelId, agenteId]
+            [empresaId, produtoId, idUsuario, responsavelId]
         );
         const contexto = resultadoContexto.rows[0];
 
@@ -193,11 +253,43 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "O responsável deve ser um usuário ativo da empresa e não pode ser Agente de Suporte.", null, 400);
         }
 
-        if (!contexto.agente_valido) {
-            return criarRespostaApi(false, "O agente deve ser um Agente de Suporte ativo vinculado à empresa.", null, 400);
-        }
+        const resultadoDadosNotificacao = await cliente.query<DadosNotificacaoTicket>(
+            `
+                select
+                    e.fantasia as empresa_nome,
+                    p.nome as produto_nome,
+                    u.nome as responsavel_nome
+                from empresas e
+                inner join produtos p on p.empresa_id = e.id
+                    and p.id = $2
+                inner join usuarios u on u.id = $3
+                where e.id = $1
+                limit 1
+            `,
+            [empresaId, produtoId, responsavelId]
+        );
+        const dadosNotificacao = resultadoDadosNotificacao.rows[0];
+
+        const resultadoAgentesNotificacao = await cliente.query<AgenteNotificacaoTicket>(
+            `
+                select distinct
+                    u.email
+                from usuarios_empresas ue
+                inner join usuarios u on u.id = ue.usuario_id
+                inner join perfil p on p.id = u.perfil_id
+                where ue.empresa_id = $1
+                    and u.ativo = true
+                    and lower(coalesce(p.nome, '')) = 'agente de suporte'
+                    and u.email is not null
+                    and trim(u.email) <> ''
+                order by u.email asc
+            `,
+            [empresaId]
+        );
+        const emailsAgentes = resultadoAgentesNotificacao.rows.map((agente) => agente.email);
 
         await cliente.query("begin");
+        transacaoAberta = true;
 
         const resultadoTicket = await cliente.query<ResultadoId>(
             `
@@ -214,7 +306,7 @@ export async function POST(request: NextRequest) {
                 values ($1, $2, $3, $4, $5, $6, $7, $8)
                 returning id
             `,
-            [titulo, empresaId, produtoId, responsavelId, agenteId, status, prioridade, idUsuario]
+            [titulo, empresaId, produtoId, responsavelId, null, STATUS_INICIAL_TICKET, prioridade, idUsuario]
         );
         const ticketId = resultadoTicket.rows[0]?.id;
 
@@ -235,10 +327,31 @@ export async function POST(request: NextRequest) {
         );
 
         await cliente.query("commit");
+        transacaoAberta = false;
+        ticketCriado = true;
+
+        if (dadosNotificacao && emailsAgentes.length > 0) {
+            await enviarEmail({
+                to: emailsAgentes.join(","),
+                subject: `Novo ticket aberto: ${titulo}`,
+                html: montarHtmlNovoTicket({
+                    titulo: titulo,
+                    empresa: dadosNotificacao.empresa_nome,
+                    produto: dadosNotificacao.produto_nome,
+                    responsavel: dadosNotificacao.responsavel_nome,
+                }),
+            });
+        }
 
         return criarRespostaApi(true, "Ticket criado com sucesso.", { id: ticketId }, 201);
     } catch (erro) {
-        await cliente?.query("rollback").catch(() => undefined);
+        if (transacaoAberta) {
+            await cliente?.query("rollback").catch(() => undefined);
+        }
+
+        if (ticketCriado) {
+            return criarRespostaApi(false, "Ticket criado, mas não foi possível enviar o e-mail para os agentes de suporte.", null, 500);
+        }
 
         if (erroComCodigo(erro) && erro.code === "23503") {
             return criarRespostaApi(false, "Empresa, produto ou usuário informado não foi encontrado.", null, 400);

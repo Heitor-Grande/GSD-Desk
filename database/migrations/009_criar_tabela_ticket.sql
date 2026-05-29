@@ -9,7 +9,7 @@ create table if not exists public.tickets (
     responsavel_id bigint not null,
     agente_id bigint null,
 
-    status varchar(20) not null,
+    status varchar(30) not null,
     prioridade varchar(20) not null,
 
     criado_em timestamptz default now() not null,

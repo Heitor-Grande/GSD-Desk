@@ -78,11 +78,13 @@ type ModalCadastroTicketProps = {
 
 type AbaTicket = "informacoesGerais" | "chat";
 
+const statusInicialTicket: OpcaoSeletor = {
+    label: "Pendente vínculo agente",
+    value: "pendente_vinculo_agente",
+};
+
 const opcoesStatus: OpcaoSeletor[] = [
-    { label: "Com Agente", value: "com_agente" },
-    { label: "Com Cliente", value: "com_cliente" },
-    { label: "Encerrado Resolvido", value: "encerrado_resolvido" },
-    { label: "Encerrado, Não Resolvido", value: "encerrado_nao_resolvido" },
+    statusInicialTicket,
 ];
 
 const opcoesPrioridade: OpcaoSeletor[] = [
@@ -314,8 +316,8 @@ export default function ModalCadastroTicket({
             setFormulario((estadoAtual) => ({
                 ...estadoAtual,
                 responsavel: usuarioInformado?.agenteSuporte ? null : opcaoUsuarioLogado,
-                agente: usuarioInformado?.agenteSuporte ? opcaoUsuarioLogado : null,
-                status: opcoesStatus[0],
+                agente: null,
+                status: statusInicialTicket,
                 prioridade: opcoesPrioridade[1],
                 criadoPor: opcaoUsuarioLogado,
             }));
@@ -413,8 +415,6 @@ export default function ModalCadastroTicket({
                     empresaId: formulario.empresa.value,
                     produtoId: formulario.produto.value,
                     responsavelId: formulario.responsavel.value,
-                    agenteId: formulario.agente?.value ?? null,
-                    status: formulario.status.value,
                     prioridade: formulario.prioridade.value,
                     mensagemInicial: formulario.mensagemInicial,
                 },
