@@ -66,6 +66,7 @@ type TicketDetalhado = TicketListado & {
     fechado_por: number | null;
     fechado_por_nome: string | null;
     usuario_pode_editar_informacoes_gerais?: boolean;
+    usuario_pode_editar_agente?: boolean;
     usuario_pode_editar_prioridade?: boolean;
 };
 
@@ -275,6 +276,7 @@ export async function GET(request: NextRequest) {
                         t.fechado_por,
                         fechado_por.nome as fechado_por_nome,
                         t.responsavel_id <> $3 as usuario_pode_editar_informacoes_gerais,
+                        lower(coalesce(perfil_usuario_logado.nome, '')) = 'agente de suporte' as usuario_pode_editar_agente,
                         t.agente_id = $3 as usuario_pode_editar_prioridade
                     from tickets t
                     inner join empresas e on e.id = t.empresa_id
@@ -283,6 +285,8 @@ export async function GET(request: NextRequest) {
                     inner join usuarios criado_por on criado_por.id = t.criado_por
                     left join usuarios agente on agente.id = t.agente_id
                     left join usuarios fechado_por on fechado_por.id = t.fechado_por
+                    left join usuarios usuario_logado on usuario_logado.id = $3
+                    left join perfil perfil_usuario_logado on perfil_usuario_logado.id = usuario_logado.perfil_id
                     where t.id = $1
                         and t.empresa_id = $2
                     limit 1
@@ -431,6 +435,8 @@ export async function PUT(request: NextRequest) {
         const resultadoValidacao = await consultarBancoDados<{
             ticket_existe: boolean;
             usuario_pode_editar_informacoes_gerais: boolean;
+            agente_atual_id: number | null;
+            usuario_pode_editar_agente: boolean;
             prioridade_atual: string | null;
             usuario_pode_editar_prioridade: boolean;
             responsavel_valido: boolean;
@@ -451,6 +457,21 @@ export async function PUT(request: NextRequest) {
                             and t.empresa_id = $2
                             and t.responsavel_id <> $5
                     ) as usuario_pode_editar_informacoes_gerais,
+                    (
+                        select t.agente_id
+                        from tickets t
+                        where t.id = $1
+                            and t.empresa_id = $2
+                        limit 1
+                    ) as agente_atual_id,
+                    exists (
+                        select 1
+                        from usuarios u
+                        left join perfil p on p.id = u.perfil_id
+                        where u.id = $5
+                            and u.ativo = true
+                            and lower(coalesce(p.nome, '')) = 'agente de suporte'
+                    ) as usuario_pode_editar_agente,
                     (
                         select t.prioridade
                         from tickets t
@@ -507,6 +528,10 @@ export async function PUT(request: NextRequest) {
 
         if (!validacao.agente_valido) {
             return criarRespostaApi(false, "O agente deve ser um Agente de Suporte ativo vinculado à empresa.", null, 400);
+        }
+
+        if (agenteId !== validacao.agente_atual_id && !validacao.usuario_pode_editar_agente) {
+            return criarRespostaApi(false, "Apenas um Agente de Suporte pode alterar o agente responsável pelo ticket.", null, 403);
         }
 
         if (!validacao.usuario_pode_editar_prioridade && prioridade !== validacao.prioridade_atual) {

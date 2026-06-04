@@ -120,7 +120,6 @@ function montarHtmlNovaMensagemTicket({
 export async function POST(request: NextRequest) {
     let cliente: PoolClient | null = null;
     let transacaoAberta = false;
-    let mensagemCriada = false;
 
     try {
         const respostaPermissao = await verificarPermissaoAPI({
@@ -223,7 +222,7 @@ export async function POST(request: NextRequest) {
                 update tickets
                 set
                     agente_id = case
-                        when $3::boolean = true then $4
+                        when $3::boolean = true and agente_id is null then $4
                         else agente_id
                     end,
                     status = case
@@ -241,40 +240,39 @@ export async function POST(request: NextRequest) {
 
         await cliente.query("commit");
         transacaoAberta = false;
-        mensagemCriada = true;
 
-        if (usuarioAgenteSuporte && contexto.responsavel_email) {
-            await enviarEmail({
-                to: contexto.responsavel_email,
-                subject: `Nova mensagem no ticket: ${contexto.titulo}`,
-                html: montarHtmlNovaMensagemTicket({
-                    titulo: contexto.titulo,
-                    status: statusAtualizadoTicket,
-                    textoIntroducao: "Um agente de suporte adicionou uma nova mensagem no seu ticket.",
-                }),
-            });
-        }
+        try {
+            if (usuarioAgenteSuporte && contexto.responsavel_email) {
+                await enviarEmail({
+                    to: contexto.responsavel_email,
+                    subject: `Nova mensagem no ticket: ${contexto.titulo}`,
+                    html: montarHtmlNovaMensagemTicket({
+                        titulo: contexto.titulo,
+                        status: statusAtualizadoTicket,
+                        textoIntroducao: "Um agente de suporte adicionou uma nova mensagem no seu ticket.",
+                    }),
+                });
+            }
 
-        if (usuarioResponsavelTicket && contexto.agente_id && contexto.agente_email) {
-            await enviarEmail({
-                to: contexto.agente_email,
-                subject: `Nova mensagem no ticket: ${contexto.titulo}`,
-                html: montarHtmlNovaMensagemTicket({
-                    titulo: contexto.titulo,
-                    status: statusAtualizadoTicket,
-                    textoIntroducao: "O responsável pelo ticket adicionou uma nova mensagem.",
-                }),
-            });
+            if (usuarioResponsavelTicket && contexto.agente_id && contexto.agente_email) {
+                await enviarEmail({
+                    to: contexto.agente_email,
+                    subject: `Nova mensagem no ticket: ${contexto.titulo}`,
+                    html: montarHtmlNovaMensagemTicket({
+                        titulo: contexto.titulo,
+                        status: statusAtualizadoTicket,
+                        textoIntroducao: "O responsável pelo ticket adicionou uma nova mensagem.",
+                    }),
+                });
+            }
+        } catch (erroEmail) {
+            console.error("Não foi possível enviar notificação de nova mensagem do ticket.", erroEmail);
         }
 
         return criarRespostaApi(true, "Mensagem enviada com sucesso.", null, 201);
     } catch {
         if (transacaoAberta) {
             await cliente?.query("rollback").catch(() => undefined);
-        }
-
-        if (mensagemCriada) {
-            return criarRespostaApi(false, "Mensagem enviada, mas não foi possível enviar o e-mail para o responsável.", null, 500);
         }
 
         return criarRespostaApi(false, "Não foi possível enviar a mensagem.", null, 500);

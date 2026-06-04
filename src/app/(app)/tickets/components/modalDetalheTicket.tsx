@@ -48,6 +48,7 @@ type TicketDetalhadoApi = {
     fechado_por: number | null;
     fechado_por_nome: string | null;
     usuario_pode_editar_informacoes_gerais?: boolean;
+    usuario_pode_editar_agente?: boolean;
     usuario_pode_editar_prioridade?: boolean;
 };
 
@@ -265,6 +266,7 @@ export default function ModalDetalheTicket({
     const [novaMensagem, setNovaMensagem] = useState("");
     const [textoNovaMensagem, setTextoNovaMensagem] = useState("");
     const [podeEditarInformacoesGerais, setPodeEditarInformacoesGerais] = useState(false);
+    const [podeEditarAgente, setPodeEditarAgente] = useState(false);
     const [podeEditarPrioridade, setPodeEditarPrioridade] = useState(false);
 
     function atualizarCampoFormulario(campo: keyof FormularioDetalheTicket, valor: string | OpcaoSeletor | null) {
@@ -285,6 +287,7 @@ export default function ModalDetalheTicket({
         setNovaMensagem("");
         setTextoNovaMensagem("");
         setPodeEditarInformacoesGerais(false);
+        setPodeEditarAgente(false);
         setPodeEditarPrioridade(false);
     }
 
@@ -329,6 +332,7 @@ export default function ModalDetalheTicket({
             setOpcoesAgente((dadosFormulario?.agentesSuporte ?? []).map(criarOpcaoUsuario));
             setMensagens(dados.mensagens ?? []);
             setPodeEditarInformacoesGerais(Boolean(ticket.usuario_pode_editar_informacoes_gerais));
+            setPodeEditarAgente(Boolean(ticket.usuario_pode_editar_agente));
             setPodeEditarPrioridade(Boolean(ticket.usuario_pode_editar_prioridade));
             setFormulario({
                 titulo: ticket.titulo,
@@ -506,7 +510,7 @@ export default function ModalDetalheTicket({
                                 </div>
 
                                 <div className="md:col-span-6">
-                                    <Seletor id="detalhe-ticket-agente" label="Agente" options={opcoesAgente} value={formulario.agente} onChange={(opcao) => atualizarCampoFormulario("agente", opcao)} placeholder="Selecione o agente" isDisabled isClearable className="w-full" />
+                                    <Seletor id="detalhe-ticket-agente" label="Agente" options={opcoesAgente} value={formulario.agente} onChange={(opcao) => atualizarCampoFormulario("agente", opcao)} placeholder="Selecione o agente" isDisabled={carregando || !podeEditarInformacoesGerais || !podeEditarAgente} isClearable className="w-full" />
                                 </div>
 
                                 <div className="md:col-span-6">
