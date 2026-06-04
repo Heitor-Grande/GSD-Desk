@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
+import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { criptografarValor, descriptografarValor } from "@/utils/criptografiaReversivel";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
@@ -65,6 +66,13 @@ function mapearConfiguracaoBancoParaApi(configuracao: ConfiguracaoAplicacaoBanco
         smtp_user: descriptografarValor(configuracao.smtp_user),
         smtp_pass: descriptografarValor(configuracao.smtp_pass),
         smtp_from: descriptografarValor(configuracao.smtp_from),
+    };
+}
+
+function mapearConfiguracaoParaAuditoria(configuracao: ConfiguracaoAplicacaoBanco): Omit<ConfiguracaoAplicacao, "smtp_pass"> & { smtp_pass: string } {
+    return {
+        ...mapearConfiguracaoBancoParaApi(configuracao),
+        smtp_pass: "[protegido]",
     };
 }
 
@@ -198,6 +206,28 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Informe os dados de configuração dentro do limite permitido.", null, 400);
         }
 
+        const resultadoConfiguracaoAntes = await consultarBancoDados<ConfiguracaoAplicacaoBanco>(
+            `
+                select
+                    id,
+                    fantasia,
+                    cnpj,
+                    email_suporte_contato,
+                    contato,
+                    disponibilidade,
+                    smtp_host,
+                    smtp_port,
+                    smtp_user,
+                    smtp_pass,
+                    smtp_from,
+                    criado_em,
+                    atualizado_em
+                from configuracao
+                order by id
+                limit 1
+            `
+        );
+
         const resultado = await consultarBancoDados<ConfiguracaoAplicacaoBanco>(
             `
                 update configuracao
@@ -253,6 +283,15 @@ export async function PUT(request: NextRequest) {
         if (!configuracao) {
             return criarRespostaApi(false, "Configuração não encontrada.", null, 404);
         }
+
+        await registrarAuditoriaSegura({
+            acao: "UPDATE",
+            usuarioId: idUsuario,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultadoConfiguracaoAntes.rows[0] ? mapearConfiguracaoParaAuditoria(resultadoConfiguracaoAntes.rows[0]) : null,
+            dadosDepois: mapearConfiguracaoParaAuditoria(configuracao),
+        });
 
         return criarRespostaApi(
             true,

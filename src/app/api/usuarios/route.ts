@@ -3,6 +3,7 @@ import { consultarBancoDados } from "@/services/database";
 import { enviarEmail } from "@/services/email";
 import { normalizarCampoOpcional, validarEmail, validarStringComConteudo } from "@/utils/validacoes";
 import { criarHash } from "@/utils/criptografia";
+import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
@@ -326,6 +327,14 @@ export async function POST(request: NextRequest) {
             }),
         });
 
+        await registrarAuditoriaSegura({
+            acao: "CREATE",
+            usuarioId: idUsuarioCriador,
+            empresaId: empresaNavegacaoId,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+        });
+
         return criarRespostaApi(true, "Usuário cadastrado com sucesso.", null, 201);
     } catch (erro) {
         if (erro instanceof SyntaxError) {
@@ -410,6 +419,28 @@ export async function PUT(request: NextRequest) {
 
         const senhaCriptografada = senha ? criarHash(senha) : null;
 
+        const resultadoUsuarioAntes = await consultarBancoDados<UsuarioDetalhado>(
+            `
+                select
+                    u.id,
+                    u.nome,
+                    u.email,
+                    u.telefone,
+                    u.documento,
+                    u.perfil_id,
+                    p.nome as perfil_nome,
+                    u.ativo,
+                    u."isAdmin",
+                    u.criado_em,
+                    u.atualizado_em
+                from usuarios u
+                left join perfil p on p.id = u.perfil_id
+                where u.id = $1
+                limit 1
+            `,
+            [id]
+        );
+
         const resultado = await consultarBancoDados<UsuarioListado>(
             `
                 update usuarios
@@ -444,6 +475,24 @@ export async function PUT(request: NextRequest) {
         if (!resultado.rows[0]) {
             return criarRespostaApi(false, "Usuário não encontrado.", null, 404);
         }
+
+        await registrarAuditoriaSegura({
+            acao: "UPDATE",
+            usuarioId: idUsuarioAtualizacao,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultadoUsuarioAntes.rows[0],
+            dadosDepois: {
+                id,
+                nome,
+                email,
+                telefone,
+                documento,
+                perfilId,
+                ativo,
+                isAdmin,
+            },
+        });
 
         return criarRespostaApi(true, "Usuário atualizado com sucesso.", null);
     } catch (erro) {
@@ -497,7 +546,34 @@ export async function DELETE(request: NextRequest) {
             return criarRespostaApi(false, "Informe um usuário válido para exclusão.", null, 400);
         }
 
-        const resultado = await consultarBancoDados<UsuarioListado>(
+        const resultadoUsuarioAntes = await consultarBancoDados<UsuarioDetalhado>(
+            `
+                select
+                    u.id,
+                    u.nome,
+                    u.email,
+                    u.telefone,
+                    u.documento,
+                    u.perfil_id,
+                    p.nome as perfil_nome,
+                    u.ativo,
+                    u."isAdmin",
+                    u.criado_em,
+                    u.atualizado_em
+                from usuarios u
+                left join perfil p on p.id = u.perfil_id
+                where u.id = $1
+                limit 1
+            `,
+            [id]
+        );
+        const usuarioAntes = resultadoUsuarioAntes.rows[0];
+
+        if (!usuarioAntes) {
+            return criarRespostaApi(false, "Usuário não encontrado.", null, 404);
+        }
+
+        await consultarBancoDados(
             `
                 delete from usuarios
                 where id = $1
@@ -506,9 +582,13 @@ export async function DELETE(request: NextRequest) {
             [id]
         );
 
-        if (!resultado.rows[0]) {
-            return criarRespostaApi(false, "Usuário não encontrado.", null, 404);
-        }
+        await registrarAuditoriaSegura({
+            acao: "DELETE",
+            usuarioId: idUsuarioExclusao,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: usuarioAntes,
+        });
 
         return criarRespostaApi(true, "Usuário excluído com sucesso.", null);
     } catch (erro) {

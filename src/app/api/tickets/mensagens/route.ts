@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados, obterClienteBancoDados } from "@/services/database";
 import { enviarEmail } from "@/services/email";
+import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
@@ -268,6 +269,14 @@ export async function POST(request: NextRequest) {
         } catch (erroEmail) {
             console.error("Não foi possível enviar notificação de nova mensagem do ticket.", erroEmail);
         }
+
+        await registrarAuditoriaSegura({
+            acao: "CREATE",
+            usuarioId: idUsuario,
+            empresaId: empresaNavegacaoId,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+        });
 
         return criarRespostaApi(true, "Mensagem enviada com sucesso.", null, 201);
     } catch {

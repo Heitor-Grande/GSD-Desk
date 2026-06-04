@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
+import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
@@ -272,6 +273,14 @@ export async function POST(request: NextRequest) {
             [empresaId, usuarioId, produtoId, idUsuarioAutenticado]
         );
 
+        await registrarAuditoriaSegura({
+            acao: "CREATE",
+            usuarioId: idUsuarioAutenticado,
+            empresaId,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+        });
+
         return criarRespostaApi(true, "Usuário vinculado ao produto com sucesso.", null, 201);
     } catch (erro) {
         const codigoErro = obterCodigoErroBanco(erro);
@@ -351,6 +360,15 @@ export async function DELETE(request: NextRequest) {
         if (!resultado.rows[0]) {
             return criarRespostaApi(false, "Vínculo do produto não encontrado.", null, 404);
         }
+
+        await registrarAuditoriaSegura({
+            acao: "DELETE",
+            usuarioId: idUsuarioAutenticado,
+            empresaId,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultado.rows[0],
+        });
 
         return criarRespostaApi(true, "Vínculo do produto removido com sucesso.", null);
     } catch {

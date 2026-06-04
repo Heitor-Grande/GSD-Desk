@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
+import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
@@ -196,6 +197,13 @@ export async function POST(request: NextRequest) {
             ]
         );
 
+        await registrarAuditoriaSegura({
+            acao: "CREATE",
+            usuarioId: idUsuario,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+        });
+
         return criarRespostaApi(true, "Perfil cadastrado com sucesso.", null, 201);
     } catch (erro) {
         if (erro instanceof SyntaxError) {
@@ -257,6 +265,23 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Informe permissões válidas para o perfil.", null, 400);
         }
 
+        const resultadoPerfilAntes = await consultarBancoDados<PerfilDetalhado>(
+            `
+                select
+                    id,
+                    nome,
+                    descricao,
+                    ativo,
+                    permissoes,
+                    criado_em,
+                    atualizado_em
+                from perfil
+                where id = $1
+                limit 1
+            `,
+            [id]
+        );
+
         const resultado = await consultarBancoDados<PerfilListado>(
             `
                 update perfil
@@ -281,6 +306,21 @@ export async function PUT(request: NextRequest) {
         if (!resultado.rows[0]) {
             return criarRespostaApi(false, "Perfil não encontrado.", null, 404);
         }
+
+        await registrarAuditoriaSegura({
+            acao: "UPDATE",
+            usuarioId: idUsuario,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultadoPerfilAntes.rows[0],
+            dadosDepois: {
+                id,
+                nome,
+                descricao,
+                ativo,
+                permissoes: body.permissoes,
+            },
+        });
 
         return criarRespostaApi(true, "Perfil atualizado com sucesso.", null);
     } catch (erro) {
@@ -344,11 +384,18 @@ export async function DELETE(request: NextRequest) {
             return criarRespostaApi(false, "Não é possível excluir um perfil vinculado a usuários.", null, 409);
         }
 
-        const resultado = await consultarBancoDados<PerfilListado>(
+        const resultado = await consultarBancoDados<PerfilDetalhado>(
             `
                 delete from perfil
                 where id = $1
-                returning id
+                returning
+                    id,
+                    nome,
+                    descricao,
+                    ativo,
+                    permissoes,
+                    criado_em,
+                    atualizado_em
             `,
             [id]
         );
@@ -356,6 +403,14 @@ export async function DELETE(request: NextRequest) {
         if (!resultado.rows[0]) {
             return criarRespostaApi(false, "Perfil não encontrado.", null, 404);
         }
+
+        await registrarAuditoriaSegura({
+            acao: "DELETE",
+            usuarioId: idUsuario,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultado.rows[0],
+        });
 
         return criarRespostaApi(true, "Perfil excluído com sucesso.", null);
     } catch {

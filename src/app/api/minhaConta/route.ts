@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
+import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { criarHash } from "@/utils/criptografia";
 import { criarRespostaApi } from "@/utils/respostaApi";
@@ -115,6 +116,28 @@ export async function PUT(request: NextRequest) {
 
         const senhaCriptografada = senha ? criarHash(senha) : null;
 
+        const resultadoUsuarioAntes = await consultarBancoDados<UsuarioMinhaConta>(
+            `
+                select
+                    u.id,
+                    u.nome,
+                    u.email,
+                    u.telefone,
+                    u.documento,
+                    u.perfil_id,
+                    p.nome as perfil_nome,
+                    u.ativo,
+                    u."isAdmin",
+                    u.criado_em,
+                    u.atualizado_em
+                from usuarios u
+                left join perfil p on p.id = u.perfil_id
+                where u.id = $1
+                limit 1
+            `,
+            [idUsuario]
+        );
+
         const resultado = await consultarBancoDados(
             `
                 update usuarios
@@ -145,6 +168,23 @@ export async function PUT(request: NextRequest) {
         if (!resultado.rows[0]) {
             return criarRespostaApi(false, "Usuário não encontrado.", null, 404);
         }
+
+        await registrarAuditoriaSegura({
+            acao: "UPDATE",
+            usuarioId: idUsuario,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultadoUsuarioAntes.rows[0],
+            dadosDepois: {
+                id: idUsuario,
+                nome,
+                email,
+                telefone,
+                documento,
+                ativo,
+                senhaAlterada: Boolean(senhaCriptografada),
+            },
+        });
 
         return criarRespostaApi(true, "Dados da conta atualizados com sucesso.", null);
     } catch (erro) {

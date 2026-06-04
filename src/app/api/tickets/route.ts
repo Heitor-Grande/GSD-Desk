@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados, obterClienteBancoDados } from "@/services/database";
 import { enviarEmail } from "@/services/email";
+import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
@@ -68,6 +69,22 @@ type TicketDetalhado = TicketListado & {
     usuario_pode_editar_informacoes_gerais?: boolean;
     usuario_pode_editar_agente?: boolean;
     usuario_pode_editar_prioridade?: boolean;
+};
+
+type TicketAuditoria = {
+    id: number;
+    titulo: string;
+    empresa_id: number;
+    produto_id: number;
+    responsavel_id: number;
+    agente_id: number | null;
+    status: string;
+    prioridade: string;
+    criado_em: Date;
+    criado_por: number;
+    ultima_atualizacao_em: Date;
+    fechado_em: Date | null;
+    fechado_por: number | null;
 };
 
 type MensagemTicketDetalhe = {
@@ -540,8 +557,32 @@ export async function PUT(request: NextRequest) {
 
         const ticketEncerrado = status === "encerrado_resolvido" || status === "encerrado_nao_resolvido";
 
+        const resultadoTicketAntes = await consultarBancoDados<TicketAuditoria>(
+            `
+                select
+                    id,
+                    titulo,
+                    empresa_id,
+                    produto_id,
+                    responsavel_id,
+                    agente_id,
+                    status,
+                    prioridade,
+                    criado_em,
+                    criado_por,
+                    ultima_atualizacao_em,
+                    fechado_em,
+                    fechado_por
+                from tickets
+                where id = $1
+                    and empresa_id = $2
+                limit 1
+            `,
+            [id, empresaNavegacaoId]
+        );
+
         // 5. Atualiza somente campos editáveis; empresa e produto permanecem fixos.
-        await consultarBancoDados(
+        const resultadoTicketDepois = await consultarBancoDados<TicketAuditoria>(
             `
                 update tickets
                 set
@@ -561,9 +602,33 @@ export async function PUT(request: NextRequest) {
                     end
                 where id = $8
                     and empresa_id = $9
+                returning
+                    id,
+                    titulo,
+                    empresa_id,
+                    produto_id,
+                    responsavel_id,
+                    agente_id,
+                    status,
+                    prioridade,
+                    criado_em,
+                    criado_por,
+                    ultima_atualizacao_em,
+                    fechado_em,
+                    fechado_por
             `,
             [titulo, responsavelId, agenteId, status, prioridade, ticketEncerrado, idUsuario, id, empresaNavegacaoId]
         );
+
+        await registrarAuditoriaSegura({
+            acao: "UPDATE",
+            usuarioId: idUsuario,
+            empresaId: empresaNavegacaoId,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultadoTicketAntes.rows[0],
+            dadosDepois: resultadoTicketDepois.rows[0],
+        });
 
         return criarRespostaApi(true, "Ticket atualizado com sucesso.", null);
     } catch (erro) {
@@ -788,6 +853,14 @@ export async function POST(request: NextRequest) {
                 }),
             });
         }
+
+        await registrarAuditoriaSegura({
+            acao: "CREATE",
+            usuarioId: idUsuario,
+            empresaId,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+        });
 
         return criarRespostaApi(true, "Ticket criado com sucesso.", { id: ticketId }, 201);
     } catch (erro) {

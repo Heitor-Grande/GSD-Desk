@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
+import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
@@ -322,6 +323,14 @@ export async function POST(request: NextRequest) {
             [empresaId, usuarioId]
         );
 
+        await registrarAuditoriaSegura({
+            acao: "CREATE",
+            usuarioId: idUsuarioAutenticado,
+            empresaId,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+        });
+
         return criarRespostaApi(true, "Vínculo criado com sucesso.", null, 201);
     } catch (erro) {
         const codigoErro = obterCodigoErroBanco(erro);
@@ -421,6 +430,17 @@ export async function PATCH(request: NextRequest) {
             return criarRespostaApi(false, "A empresa precisa estar vinculada ao usuário para ser definida como padrão.", null, 400);
         }
 
+        const resultadoUsuarioAntes = await consultarBancoDados<{ id: number; empresa_padrao: number | null }>(
+            `
+                select id,
+                    empresa_padrao
+                from usuarios
+                where id = $1
+                limit 1
+            `,
+            [usuarioId]
+        );
+
         await consultarBancoDados(
             `
                 update usuarios
@@ -430,6 +450,19 @@ export async function PATCH(request: NextRequest) {
             `,
             [empresaId, usuarioId]
         );
+
+        await registrarAuditoriaSegura({
+            acao: "UPDATE",
+            usuarioId: idUsuarioAutenticado,
+            empresaId,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultadoUsuarioAntes.rows[0],
+            dadosDepois: {
+                usuarioId,
+                empresaPadrao: empresaId,
+            },
+        });
 
         return criarRespostaApi(true, "Empresa padrão atualizada com sucesso.", null);
     } catch (erro) {
@@ -509,6 +542,15 @@ export async function DELETE(request: NextRequest) {
             `,
             [vinculoRemovido.usuario_id, vinculoRemovido.empresa_id]
         );
+
+        await registrarAuditoriaSegura({
+            acao: "DELETE",
+            usuarioId: idUsuarioAutenticado,
+            empresaId: vinculoRemovido.empresa_id,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: vinculoRemovido,
+        });
 
         return criarRespostaApi(true, "Vínculo removido com sucesso.", null);
     } catch {

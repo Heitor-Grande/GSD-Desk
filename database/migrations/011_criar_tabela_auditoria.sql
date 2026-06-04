@@ -35,3 +35,14 @@ create index if not exists auditoria_empresa_id_idx
 
 create index if not exists auditoria_criado_em_idx
     on public.auditoria (criado_em);
+
+--adiciona colunas aqui
+alter table public.auditoria
+    add column if not exists metodo_http varchar(10) null,
+    add column if not exists rota varchar(255) null;
+
+create index if not exists auditoria_metodo_http_idx
+    on public.auditoria (metodo_http);
+
+create index if not exists auditoria_rota_idx
+    on public.auditoria (rota);

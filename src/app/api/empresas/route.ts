@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
+import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
@@ -93,6 +94,15 @@ export async function DELETE(request: NextRequest) {
         if (!resultado.rows[0]) {
             return criarRespostaApi(false, "Empresa não encontrada.", null, 404);
         }
+
+        await registrarAuditoriaSegura({
+            acao: "DELETE",
+            usuarioId: idUsuario,
+            empresaId: id,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultado.rows[0],
+        });
 
         return criarRespostaApi(true, "Empresa excluída com sucesso.", null);
     } catch {
@@ -278,6 +288,14 @@ export async function POST(request: NextRequest) {
             [idUsuario, resultado.rows[0].id, idUsuario]
         );
 
+        await registrarAuditoriaSegura({
+            acao: "CREATE",
+            usuarioId: idUsuario,
+            empresaId: resultado.rows[0].id,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+        });
+
         return criarRespostaApi(true, "Empresa cadastrada com sucesso.", resultado.rows[0], 201);
     } catch (erro) {
         if (erro instanceof SyntaxError) {
@@ -350,6 +368,26 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Telefone deve respeitar o limite de caracteres.", null, 400);
         }
 
+        const resultadoEmpresaAntes = await consultarBancoDados<EmpresaListada>(
+            `
+                select
+                    id,
+                    fantasia,
+                    cnpj,
+                    email,
+                    telefone,
+                    ativo,
+                    exigir_vinculo_produto,
+                    suporte_visualiza_apenas_tickets_proprios,
+                    criado_em,
+                    atualizado_em
+                from empresas
+                where id = $1
+                limit 1
+            `,
+            [id]
+        );
+
         const resultado = await consultarBancoDados<EmpresaListada>(
             `
                 update empresas
@@ -381,6 +419,16 @@ export async function PUT(request: NextRequest) {
         if (!resultado.rows[0]) {
             return criarRespostaApi(false, "Empresa não encontrada.", null, 404);
         }
+
+        await registrarAuditoriaSegura({
+            acao: "UPDATE",
+            usuarioId: idUsuario,
+            empresaId: id,
+            metodo: request.method,
+            rota: request.nextUrl.pathname,
+            dadosAntes: resultadoEmpresaAntes.rows[0],
+            dadosDepois: resultado.rows[0],
+        });
 
         return criarRespostaApi(true, "Empresa atualizada com sucesso.", resultado.rows[0]);
     } catch (erro) {
