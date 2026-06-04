@@ -11,6 +11,9 @@ Execute os scripts em ordem crescente pelo prefixo numÃ©rico. Esta pasta contÃ©m
 5. `006_criar_tabela_usuarios_empresas.sql`
 6. `007_criar_tabela_produtos.sql`
 7. `008_criar_tabela_usuarios_produtos.sql`
+8. `009_criar_tabela_ticket.sql`
+9. `010_criar_tabela_ticket_mensagens.sql`
+10. `011_criar_tabela_auditoria.sql`
 
 ## Tabela `usuarios`
 
@@ -282,3 +285,35 @@ Regras importantes:
 - UsuÃ¡rios que possuem mensagens vinculadas nÃ£o podem ser removidos do banco.
 - O campo `conteudo` utiliza `TEXT` para suportar HTML vindo do editor rich text.
 - A ordenaÃ§Ã£o padrÃ£o das mensagens deve considerar `enviado_em`.
+
+## Tabela `auditoria`
+
+Criada por `011_criar_tabela_auditoria.sql`.
+
+A tabela `auditoria` armazena registros de alterações relevantes realizadas na aplicação.
+
+Campos:
+
+- `id`: chave primária.
+- `acao`: ação realizada, como `CREATE`, `UPDATE` ou `DELETE`.
+- `usuario_id`: usuário que realizou a ação.
+- `empresa_id`: empresa relacionada ao contexto da ação, quando houver.
+- `dados_antes`: dados antes da alteração, usado em `UPDATE` e `DELETE`.
+- `dados_depois`: dados depois da alteração, usado em `UPDATE`.
+- `criado_em`: data de criação do registro de auditoria.
+
+Índices e relacionamentos:
+
+- `auditoria_pkey`: chave primária em `id`.
+- `auditoria_usuario_id_fkey`: FK de `usuario_id` para `usuarios.id`, com `ON DELETE SET NULL`.
+- `auditoria_empresa_id_fkey`: FK de `empresa_id` para `empresas.id`, com `ON DELETE SET NULL`.
+- `auditoria_acao_idx`: índice para consultas por ação.
+- `auditoria_usuario_id_idx`: índice para consultas por usuário.
+- `auditoria_empresa_id_idx`: índice para consultas por empresa.
+- `auditoria_criado_em_idx`: índice para consultas por data de criação.
+
+Regras importantes:
+
+- Em ações de `CREATE`, `dados_antes` e `dados_depois` não devem ser preenchidos.
+- Em ações de `UPDATE`, preencha `dados_antes` com o estado anterior e `dados_depois` com o estado posterior.
+- Em ações de `DELETE`, preencha `dados_antes` com o estado anterior e não preencha `dados_depois`.
