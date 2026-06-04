@@ -47,6 +47,8 @@ type TicketDetalhadoApi = {
     fechado_em: string | null;
     fechado_por: number | null;
     fechado_por_nome: string | null;
+    usuario_pode_editar_informacoes_gerais?: boolean;
+    usuario_pode_editar_prioridade?: boolean;
 };
 
 type MensagemTicketApi = {
@@ -262,6 +264,8 @@ export default function ModalDetalheTicket({
     const [abaAtiva, setAbaAtiva] = useState<AbaTicket>("informacoesGerais");
     const [novaMensagem, setNovaMensagem] = useState("");
     const [textoNovaMensagem, setTextoNovaMensagem] = useState("");
+    const [podeEditarInformacoesGerais, setPodeEditarInformacoesGerais] = useState(false);
+    const [podeEditarPrioridade, setPodeEditarPrioridade] = useState(false);
 
     function atualizarCampoFormulario(campo: keyof FormularioDetalheTicket, valor: string | OpcaoSeletor | null) {
         setFormulario((estadoAtual) => ({
@@ -280,6 +284,8 @@ export default function ModalDetalheTicket({
         setAbaAtiva("informacoesGerais");
         setNovaMensagem("");
         setTextoNovaMensagem("");
+        setPodeEditarInformacoesGerais(false);
+        setPodeEditarPrioridade(false);
     }
 
     function obterClassesAba(aba: AbaTicket): string {
@@ -322,6 +328,8 @@ export default function ModalDetalheTicket({
             setOpcoesResponsavel((dadosFormulario?.usuariosAtivos ?? []).map(criarOpcaoUsuario));
             setOpcoesAgente((dadosFormulario?.agentesSuporte ?? []).map(criarOpcaoUsuario));
             setMensagens(dados.mensagens ?? []);
+            setPodeEditarInformacoesGerais(Boolean(ticket.usuario_pode_editar_informacoes_gerais));
+            setPodeEditarPrioridade(Boolean(ticket.usuario_pode_editar_prioridade));
             setFormulario({
                 titulo: ticket.titulo,
                 empresa: criarOpcaoTexto(ticket.empresa_nome, ticket.empresa_id),
@@ -478,7 +486,7 @@ export default function ModalDetalheTicket({
                                         value={formulario.titulo}
                                         placeholder="Informe o título do ticket"
                                         onChange={(event) => atualizarCampoFormulario("titulo", event.target.value)}
-                                        disabled={carregando}
+                                        disabled={carregando || !podeEditarInformacoesGerais}
                                         required
                                         className="mb-0"
                                         maxLength={50}
@@ -494,7 +502,7 @@ export default function ModalDetalheTicket({
                                 </div>
 
                                 <div className="md:col-span-6">
-                                    <Seletor id="detalhe-ticket-responsavel" label="Responsável" options={opcoesResponsavel} value={formulario.responsavel} onChange={(opcao) => atualizarCampoFormulario("responsavel", opcao)} placeholder="Selecione o responsável" isDisabled={carregando} isClearable={false} className="w-full" />
+                                    <Seletor id="detalhe-ticket-responsavel" label="Responsável" options={opcoesResponsavel} value={formulario.responsavel} onChange={(opcao) => atualizarCampoFormulario("responsavel", opcao)} placeholder="Selecione o responsável" isDisabled={carregando || !podeEditarInformacoesGerais} isClearable={false} className="w-full" />
                                 </div>
 
                                 <div className="md:col-span-6">
@@ -502,11 +510,11 @@ export default function ModalDetalheTicket({
                                 </div>
 
                                 <div className="md:col-span-6">
-                                    <Seletor id="detalhe-ticket-status" label="Status" options={opcoesStatus} value={formulario.status} onChange={(opcao) => atualizarCampoFormulario("status", opcao)} placeholder="Selecione o status" isDisabled={carregando} isClearable={false} className="w-full" />
+                                    <Seletor id="detalhe-ticket-status" label="Status" options={opcoesStatus} value={formulario.status} onChange={(opcao) => atualizarCampoFormulario("status", opcao)} placeholder="Selecione o status" isDisabled={carregando || !podeEditarInformacoesGerais} isClearable={false} className="w-full" />
                                 </div>
 
                                 <div className="md:col-span-6">
-                                    <Seletor id="detalhe-ticket-prioridade" label="Prioridade" options={opcoesPrioridade} value={formulario.prioridade} onChange={(opcao) => atualizarCampoFormulario("prioridade", opcao)} placeholder="Selecione a prioridade" isDisabled={carregando} isClearable={false} className="w-full" />
+                                    <Seletor id="detalhe-ticket-prioridade" label="Prioridade" options={opcoesPrioridade} value={formulario.prioridade} onChange={(opcao) => atualizarCampoFormulario("prioridade", opcao)} placeholder="Selecione a prioridade" isDisabled={carregando || !podeEditarInformacoesGerais || !podeEditarPrioridade} isClearable={false} className="w-full" />
                                 </div>
 
                                 <div className="md:col-span-3">
@@ -584,7 +592,7 @@ export default function ModalDetalheTicket({
 
                     <Modal.Footer>
                         <Botao size="sm" label="Cancelar" icon={<FaTimes />} onClick={aoFechar} disabled={carregando} loading={false} variant="outline-secondary" type="button" className="" />
-                        <Botao size="sm" label="Salvar ticket" icon={<FaSave />} onClick={() => undefined} disabled={carregando} loading={carregando} variant="outline-primary" type="submit" className="" />
+                        <Botao size="sm" label="Salvar ticket" icon={<FaSave />} onClick={() => undefined} disabled={carregando || !podeEditarInformacoesGerais} loading={carregando} variant="outline-primary" type="submit" className="" />
                     </Modal.Footer>
                 </form>
             </Modal>

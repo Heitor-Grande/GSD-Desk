@@ -5,6 +5,7 @@ import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
+import { normalizarNomePerfil, STATUS_INICIAL_TICKET, usuarioPodeVisualizarTicket } from "@/utils/tickets";
 import { validarStringComConteudo } from "@/utils/validacoes";
 import type { PoolClient } from "pg";
 
@@ -20,12 +21,17 @@ type TicketMensagemContexto = {
     responsavel_id: number;
     responsavel_email: string | null;
     agente_id: number | null;
+    agente_email: string | null;
     status: string;
     suporte_visualiza_apenas_tickets_proprios: boolean;
     perfil_nome: string | null;
 };
 
-const STATUS_INICIAL_TICKET = "pendente_vinculo_agente";
+type TicketMensagemAtualizado = {
+    status: string;
+};
+
+const STATUS_COM_AGENTE = "com_agente";
 
 const rotulosStatus: Record<string, string> = {
     pendente_vinculo_agente: "Pendente vínculo agente",
@@ -39,10 +45,6 @@ function normalizarId(valor: unknown): number | null {
     const id = Number(valor);
 
     return Number.isInteger(id) && id > 0 ? id : null;
-}
-
-function normalizarNomePerfil(nome: string | null): string {
-    return (nome || "").trim().toLowerCase();
 }
 
 function obterTextoMensagem(conteudoHtml: string): string {
@@ -64,42 +66,21 @@ function escaparHtml(valor: string): string {
         .replace(/'/g, "&#039;");
 }
 
-function usuarioPodeInteragirComTicket({
-    contexto,
-    idUsuario,
-}: {
-    contexto: TicketMensagemContexto;
-    idUsuario: number;
-}): boolean {
-    const perfilNormalizado = normalizarNomePerfil(contexto.perfil_nome);
-    const usuarioAgenteSuporte = perfilNormalizado === "agente de suporte";
-    const usuarioClienteManager = perfilNormalizado === "cliente manager";
-
-    if (usuarioAgenteSuporte) {
-        return !contexto.suporte_visualiza_apenas_tickets_proprios
-            || contexto.agente_id === idUsuario
-            || contexto.status === STATUS_INICIAL_TICKET;
-    }
-
-    if (usuarioClienteManager) {
-        return true;
-    }
-
-    return contexto.responsavel_id === idUsuario;
-}
-
 /**
  * Monta o HTML enviado ao responsável quando um agente adiciona mensagem ao ticket.
  */
 function montarHtmlNovaMensagemTicket({
     titulo,
     status,
+    textoIntroducao,
 }: {
     titulo: string;
     status: string;
+    textoIntroducao: string;
 }): string {
     const tituloSeguro = escaparHtml(titulo);
     const statusSeguro = escaparHtml(rotulosStatus[status] || status);
+    const textoIntroducaoSeguro = escaparHtml(textoIntroducao);
 
     return `
         <div style="margin:0;padding:32px;background-color:#f4f7fb;font-family:Arial,sans-serif;color:#273142;">
@@ -111,7 +92,7 @@ function montarHtmlNovaMensagemTicket({
 
                 <div style="padding:28px 24px;">
                     <p style="margin:0 0 18px;font-size:16px;line-height:1.5;">
-                        Um agente de suporte adicionou uma nova mensagem no seu ticket.
+                        ${textoIntroducaoSeguro}
                     </p>
 
                     <div style="margin:0 0 22px;padding:18px;border:1px solid #dce3ec;border-radius:8px;background-color:#f8fafc;">
@@ -193,12 +174,14 @@ export async function POST(request: NextRequest) {
                     t.responsavel_id,
                     responsavel.email as responsavel_email,
                     t.agente_id,
+                    agente.email as agente_email,
                     t.status,
                     e.suporte_visualiza_apenas_tickets_proprios,
                     p.nome as perfil_nome
                 from tickets t
                 inner join empresas e on e.id = t.empresa_id
                 inner join usuarios responsavel on responsavel.id = t.responsavel_id
+                left join usuarios agente on agente.id = t.agente_id
                 inner join usuarios u on u.id = $3
                 left join perfil p on p.id = u.perfil_id
                 where t.id = $1
@@ -213,12 +196,12 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Ticket não encontrado para a empresa selecionada.", null, 404);
         }
 
-        if (!usuarioPodeInteragirComTicket({ contexto, idUsuario })) {
+        if (!usuarioPodeVisualizarTicket({ ticket: contexto, idUsuario, contexto })) {
             return criarRespostaApi(false, "Você não possui permissão para enviar mensagem neste ticket.", null, 403);
         }
 
         const usuarioAgenteSuporte = normalizarNomePerfil(contexto.perfil_nome) === "agente de suporte";
-
+        const usuarioResponsavelTicket = parseInt(contexto.responsavel_id.toString()) === idUsuario;
         cliente = await obterClienteBancoDados();
         await cliente.query("begin");
         transacaoAberta = true;
@@ -235,7 +218,7 @@ export async function POST(request: NextRequest) {
             [ticketId, conteudo, idUsuario]
         );
 
-        await cliente.query(
+        const resultadoTicketAtualizado = await cliente.query<TicketMensagemAtualizado>(
             `
                 update tickets
                 set
@@ -243,12 +226,18 @@ export async function POST(request: NextRequest) {
                         when $3::boolean = true then $4
                         else agente_id
                     end,
+                    status = case
+                        when $3::boolean = true and status = $5 then $6
+                        else status
+                    end,
                     ultima_atualizacao_em = now()
                 where id = $1
                     and empresa_id = $2
+                returning status
             `,
-            [ticketId, empresaNavegacaoId, usuarioAgenteSuporte, idUsuario]
+            [ticketId, empresaNavegacaoId, usuarioAgenteSuporte, idUsuario, STATUS_INICIAL_TICKET, STATUS_COM_AGENTE]
         );
+        const statusAtualizadoTicket = resultadoTicketAtualizado.rows[0]?.status ?? contexto.status;
 
         await cliente.query("commit");
         transacaoAberta = false;
@@ -260,7 +249,20 @@ export async function POST(request: NextRequest) {
                 subject: `Nova mensagem no ticket: ${contexto.titulo}`,
                 html: montarHtmlNovaMensagemTicket({
                     titulo: contexto.titulo,
-                    status: contexto.status,
+                    status: statusAtualizadoTicket,
+                    textoIntroducao: "Um agente de suporte adicionou uma nova mensagem no seu ticket.",
+                }),
+            });
+        }
+
+        if (usuarioResponsavelTicket && contexto.agente_id && contexto.agente_email) {
+            await enviarEmail({
+                to: contexto.agente_email,
+                subject: `Nova mensagem no ticket: ${contexto.titulo}`,
+                html: montarHtmlNovaMensagemTicket({
+                    titulo: contexto.titulo,
+                    status: statusAtualizadoTicket,
+                    textoIntroducao: "O responsável pelo ticket adicionou uma nova mensagem.",
                 }),
             });
         }

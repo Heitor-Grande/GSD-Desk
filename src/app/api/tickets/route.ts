@@ -5,6 +5,7 @@ import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
+import { STATUS_INICIAL_TICKET, usuarioPodeVisualizarTicket } from "@/utils/tickets";
 import { validarStringComConteudo } from "@/utils/validacoes";
 import type { PoolClient } from "pg";
 
@@ -64,6 +65,8 @@ type TicketDetalhado = TicketListado & {
     fechado_em: Date | null;
     fechado_por: number | null;
     fechado_por_nome: string | null;
+    usuario_pode_editar_informacoes_gerais?: boolean;
+    usuario_pode_editar_prioridade?: boolean;
 };
 
 type MensagemTicketDetalhe = {
@@ -79,7 +82,6 @@ type ContextoListagemTicket = {
     perfil_nome: string | null;
 };
 
-const STATUS_INICIAL_TICKET = "pendente_vinculo_agente";
 const statusPermitidos = [
     STATUS_INICIAL_TICKET,
     "com_agente",
@@ -96,36 +98,6 @@ function normalizarId(valor: unknown): number | null {
 
 function validarIdPositivo(valor: number): boolean {
     return Number.isInteger(valor) && valor > 0;
-}
-
-function normalizarNomePerfil(nome: string | null): string {
-    return (nome || "").trim().toLowerCase();
-}
-
-function usuarioPodeVisualizarTicket({
-    ticket,
-    idUsuario,
-    contexto,
-}: {
-    ticket: Pick<TicketListado, "responsavel_id" | "agente_id" | "status">;
-    idUsuario: number;
-    contexto: ContextoListagemTicket;
-}): boolean {
-    const perfilNormalizado = normalizarNomePerfil(contexto.perfil_nome);
-    const usuarioAgenteSuporte = perfilNormalizado === "agente de suporte";
-    const usuarioClienteManager = perfilNormalizado === "cliente manager";
-
-    if (usuarioAgenteSuporte) {
-        return !contexto.suporte_visualiza_apenas_tickets_proprios
-            || ticket.agente_id === idUsuario
-            || ticket.status === STATUS_INICIAL_TICKET;
-    }
-
-    if (usuarioClienteManager) {
-        return true;
-    }
-
-    return ticket.responsavel_id === idUsuario;
 }
 
 function obterTextoMensagem(conteudoHtml: string): string {
@@ -301,7 +273,9 @@ export async function GET(request: NextRequest) {
                         t.ultima_atualizacao_em,
                         t.fechado_em,
                         t.fechado_por,
-                        fechado_por.nome as fechado_por_nome
+                        fechado_por.nome as fechado_por_nome,
+                        t.responsavel_id <> $3 as usuario_pode_editar_informacoes_gerais,
+                        t.agente_id = $3 as usuario_pode_editar_prioridade
                     from tickets t
                     inner join empresas e on e.id = t.empresa_id
                     inner join produtos p on p.id = t.produto_id
@@ -313,7 +287,7 @@ export async function GET(request: NextRequest) {
                         and t.empresa_id = $2
                     limit 1
                 `,
-                [ticketIdDetalhe, empresaNavegacaoId]
+                [ticketIdDetalhe, empresaNavegacaoId, idUsuario]
             );
             const ticket = resultadoTicket.rows[0];
 
@@ -456,6 +430,9 @@ export async function PUT(request: NextRequest) {
         // 4. Valida se o ticket pertence à empresa e se responsáveis/agentes são coerentes com seus perfis.
         const resultadoValidacao = await consultarBancoDados<{
             ticket_existe: boolean;
+            usuario_pode_editar_informacoes_gerais: boolean;
+            prioridade_atual: string | null;
+            usuario_pode_editar_prioridade: boolean;
             responsavel_valido: boolean;
             agente_valido: boolean;
         }>(
@@ -467,6 +444,27 @@ export async function PUT(request: NextRequest) {
                         where t.id = $1
                             and t.empresa_id = $2
                     ) as ticket_existe,
+                    exists (
+                        select 1
+                        from tickets t
+                        where t.id = $1
+                            and t.empresa_id = $2
+                            and t.responsavel_id <> $5
+                    ) as usuario_pode_editar_informacoes_gerais,
+                    (
+                        select t.prioridade
+                        from tickets t
+                        where t.id = $1
+                            and t.empresa_id = $2
+                        limit 1
+                    ) as prioridade_atual,
+                    exists (
+                        select 1
+                        from tickets t
+                        where t.id = $1
+                            and t.empresa_id = $2
+                            and t.agente_id = $5
+                    ) as usuario_pode_editar_prioridade,
                     exists (
                         select 1
                         from usuarios_empresas ue
@@ -491,12 +489,16 @@ export async function PUT(request: NextRequest) {
                         )
                     end as agente_valido
             `,
-            [id, empresaNavegacaoId, responsavelId, agenteId]
+            [id, empresaNavegacaoId, responsavelId, agenteId, idUsuario]
         );
         const validacao = resultadoValidacao.rows[0];
 
         if (!validacao?.ticket_existe) {
             return criarRespostaApi(false, "Ticket não encontrado para a empresa selecionada.", null, 404);
+        }
+
+        if (!validacao.usuario_pode_editar_informacoes_gerais) {
+            return criarRespostaApi(false, "O responsável pelo ticket não pode editar as informações gerais após a criação.", null, 403);
         }
 
         if (!validacao.responsavel_valido) {
@@ -505,6 +507,10 @@ export async function PUT(request: NextRequest) {
 
         if (!validacao.agente_valido) {
             return criarRespostaApi(false, "O agente deve ser um Agente de Suporte ativo vinculado à empresa.", null, 400);
+        }
+
+        if (!validacao.usuario_pode_editar_prioridade && prioridade !== validacao.prioridade_atual) {
+            return criarRespostaApi(false, "Apenas o agente responsável pelo ticket pode alterar a prioridade.", null, 403);
         }
 
         const ticketEncerrado = status === "encerrado_resolvido" || status === "encerrado_nao_resolvido";
