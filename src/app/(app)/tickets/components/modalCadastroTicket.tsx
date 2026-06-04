@@ -393,11 +393,6 @@ export default function ModalCadastroTicket({
             return;
         }
 
-        if (!formulario.status || !formulario.prioridade) {
-            setMensagemResposta("Informe status e prioridade para criar o ticket.");
-            return;
-        }
-
         if (!formulario.textoMensagemInicial) {
             setMensagemResposta("Informe a mensagem inicial para abrir o ticket.");
             setAbaAtiva("chat");
@@ -415,7 +410,6 @@ export default function ModalCadastroTicket({
                     empresaId: formulario.empresa.value,
                     produtoId: formulario.produto.value,
                     responsavelId: formulario.responsavel.value,
-                    prioridade: formulario.prioridade.value,
                     mensagemInicial: formulario.mensagemInicial,
                 },
             });

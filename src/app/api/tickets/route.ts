@@ -87,7 +87,6 @@ const statusPermitidos = [
     "encerrado_resolvido",
     "encerrado_nao_resolvido",
 ];
-const prioridadesPermitidas = ["baixa", "media", "alta", "muito_alta"];
 
 function normalizarId(valor: unknown): number | null {
     const id = Number(valor);
@@ -440,8 +439,8 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Informe um responsável válido para o ticket.", null, 400);
         }
 
-        if (!statusPermitidos.includes(status) || !prioridadesPermitidas.includes(prioridade)) {
-            return criarRespostaApi(false, "Informe status e prioridade válidos para atualizar o ticket.", null, 400);
+        if (!statusPermitidos.includes(status)) {
+            return criarRespostaApi(false, "Informe status válido para atualizar o ticket.", null, 400);
         }
 
         // 3. Confirma vínculo do usuário com a empresa de navegação.
@@ -588,16 +587,9 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Informe empresa, produto e responsável para criar o ticket.", null, 400);
         }
 
-        if (!prioridadesPermitidas.includes(prioridade)) {
-            return criarRespostaApi(false, "Informe uma prioridade válida para criar o ticket.", null, 400);
-        }
 
         if (!textoMensagemInicial) {
             return criarRespostaApi(false, "Informe a mensagem inicial para abrir o ticket.", null, 400);
-        }
-
-        if (mensagemInicial.length > 20000) {
-            return criarRespostaApi(false, "A mensagem inicial deve ter no máximo 20.000 caracteres.", null, 400);
         }
 
         const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
