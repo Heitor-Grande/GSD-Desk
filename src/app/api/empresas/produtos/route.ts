@@ -95,12 +95,6 @@ export async function GET(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem visualizar produtos.", null, 403);
-        }
-
         const empresaId = Number(request.nextUrl.searchParams.get("empresaId"));
 
         if (!validarIdPositivo(empresaId)) {
@@ -157,12 +151,6 @@ export async function POST(request: NextRequest) {
 
         if (!idUsuarioAutenticado) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
-        }
-
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem cadastrar produtos.", null, 403);
         }
 
         const body = await request.json() as ProdutoBody;
@@ -255,12 +243,6 @@ export async function PUT(request: NextRequest) {
 
         if (!idUsuarioAutenticado) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
-        }
-
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem atualizar produtos.", null, 403);
         }
 
         const body = await request.json() as ProdutoBody;
@@ -375,12 +357,6 @@ export async function DELETE(request: NextRequest) {
 
         if (!idUsuarioAutenticado) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
-        }
-
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem desativar produtos.", null, 403);
         }
 
         const id = Number(request.nextUrl.searchParams.get("id"));

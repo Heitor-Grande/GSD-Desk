@@ -4,7 +4,6 @@ import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
-import { verificarUsuarioAdministrador } from "@/utils/usuarioAdmin";
 
 type EntidadeAtiva = {
     id: number;
@@ -76,6 +75,12 @@ export async function GET(request: NextRequest) {
 
         if (respostaPermissao) {
             return respostaPermissao;
+        }
+
+        const idUsuarioAutenticado = obterIdUsuarioAutenticado(request);
+
+        if (!idUsuarioAutenticado) {
+            return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
         const empresaId = Number(request.nextUrl.searchParams.get("empresaId"));
@@ -152,6 +157,12 @@ export async function GET(request: NextRequest) {
                         e.cnpj
                     from empresas e
                     where e.ativo = true
+                        and exists (
+                            select 1
+                            from usuarios_empresas ue_usuario_logado
+                            where ue_usuario_logado.empresa_id = e.id
+                                and ue_usuario_logado.usuario_id = $2
+                        )
                         and not exists (
                             select 1
                             from usuarios_empresas ue
@@ -160,7 +171,7 @@ export async function GET(request: NextRequest) {
                         )
                     order by e.fantasia asc
                 `,
-                [usuarioId]
+                [usuarioId, idUsuarioAutenticado]
             );
 
             return criarRespostaApi(true, "Empresas disponíveis listadas com sucesso.", resultadoDisponiveis.rows);

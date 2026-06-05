@@ -8,7 +8,6 @@ import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
-import { verificarUsuarioAdministrador } from "@/utils/usuarioAdmin";
 
 type UsuarioListado = {
     id: number;
@@ -248,12 +247,6 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioCriador);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem cadastrar usuários.", null, 403);
-        }
-
         const nome = validarStringComConteudo(body.nome) ? body.nome.trim() : "";
         const email = validarStringComConteudo(body.email) ? body.email.trim().toLowerCase() : "";
         const senha = validarStringComConteudo(body.senha) ? body.senha : "";
@@ -374,12 +367,6 @@ export async function PUT(request: NextRequest) {
 
         if (!idUsuarioAtualizacao) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
-        }
-
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAtualizacao);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem atualizar usuários.", null, 403);
         }
 
         const id = typeof body.id === "number" ? body.id : Number(body.id);
@@ -532,12 +519,6 @@ export async function DELETE(request: NextRequest) {
 
         if (!idUsuarioExclusao) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
-        }
-
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioExclusao);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem excluir usuários.", null, 403);
         }
 
         const id = Number(request.nextUrl.searchParams.get("id"));

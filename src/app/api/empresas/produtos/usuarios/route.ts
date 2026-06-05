@@ -149,12 +149,6 @@ export async function GET(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem visualizar vínculos de produto.", null, 403);
-        }
-
         const empresaId = Number(request.nextUrl.searchParams.get("empresaId"));
         const produtoId = Number(request.nextUrl.searchParams.get("produtoId"));
         const listarDisponiveis = request.nextUrl.searchParams.get("disponiveis") === "true";
@@ -237,12 +231,6 @@ export async function POST(request: NextRequest) {
 
         if (!idUsuarioAutenticado) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
-        }
-
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem criar vínculos de produto.", null, 403);
         }
 
         const body = await request.json() as VinculoUsuarioProdutoBody;

@@ -58,12 +58,6 @@ type EmpresaVinculoApi = VinculoApi & {
     cnpj: string;
 };
 
-type UsuarioDisponivelApi = {
-    id: number;
-    nome: string;
-    email: string;
-};
-
 type EmpresaDisponivelApi = {
     id: number;
     fantasia: string;
@@ -77,13 +71,6 @@ type EstadoPaginacao = {
 
 function obterListaDados<TipoItem>(dados: unknown): TipoItem[] {
     return Array.isArray(dados) ? dados as TipoItem[] : [];
-}
-
-function criarOpcoesUsuarios(usuarios: UsuarioDisponivelApi[]): OpcaoVinculo[] {
-    return usuarios.map((usuario) => ({
-        label: `${usuario.nome} - ${usuario.email}`,
-        value: String(usuario.id),
-    }));
 }
 
 function criarOpcoesEmpresas(empresas: EmpresaDisponivelApi[]): OpcaoVinculo[] {
@@ -114,8 +101,8 @@ function mapearEmpresaVinculada(vinculo: EmpresaVinculoApi): EmpresaVinculo {
 }
 
 /**
- * Gerencia vínculos reais entre usuários e empresas nos formulários do template.
- * Use no formulário de usuário ou empresa informando o id do contexto fixo correspondente.
+ * Gerencia vínculos entre um usuário e suas empresas.
+ * Use apenas no formulário de usuário, informando o id do usuário salvo.
  */
 export default function VinculoUsuarioEmpresa({
     form,
@@ -125,7 +112,6 @@ export default function VinculoUsuarioEmpresa({
 }: VinculoUsuarioEmpresaProps) {
     const [usuariosVinculados, setUsuariosVinculados] = useState<UsuarioVinculo[]>([]);
     const [empresasVinculadas, setEmpresasVinculadas] = useState<EmpresaVinculo[]>([]);
-    const [opcoesUsuarios, setOpcoesUsuarios] = useState<OpcaoVinculo[]>([]);
     const [opcoesEmpresas, setOpcoesEmpresas] = useState<OpcaoVinculo[]>([]);
     const [opcaoSelecionada, setOpcaoSelecionada] = useState<OpcaoVinculo | null>(null);
     const [mensagemValidacao, setMensagemValidacao] = useState("");
@@ -140,23 +126,8 @@ export default function VinculoUsuarioEmpresa({
     const estaNoFormularioEmpresa = form === "empresa";
     const idContexto = estaNoFormularioEmpresa ? idEmpresa : idUsuario;
     const possuiContextoSalvo = typeof idContexto === "number" && idContexto > 0;
-    const tituloSecao = estaNoFormularioEmpresa ? "Usuários vinculados" : "Empresas vinculadas";
-    const textoAuxiliar = estaNoFormularioEmpresa
-        ? "Selecione usuários ativos para vincular à empresa atual."
-        : "Selecione empresas ativas para vincular ao usuário atual.";
-    const labelContextoFixo = estaNoFormularioEmpresa ? "Empresa atual" : "Usuário atual";
     const valorContextoFixo = nomeContexto || (possuiContextoSalvo ? "Registro em edição" : "Salve o registro para gerenciar vínculos");
-    const labelSeletor = estaNoFormularioEmpresa ? "Usuário" : "Empresa";
-    const placeholderSeletor = estaNoFormularioEmpresa ? "Selecione um usuário" : "Selecione uma empresa";
-    const textoEstadoVazio = estaNoFormularioEmpresa
-        ? "Nenhum usuário vinculado a esta empresa."
-        : "Nenhuma empresa vinculada a este usuário.";
     const chavePaginacao = `${form}-${idContexto ?? "novo"}`;
-
-    const opcoesDisponiveis = useMemo(() => (
-        estaNoFormularioEmpresa ? opcoesUsuarios : opcoesEmpresas
-    ), [estaNoFormularioEmpresa, opcoesEmpresas, opcoesUsuarios]);
-
     const possuiVinculos = estaNoFormularioEmpresa
         ? usuariosVinculados.length > 0
         : empresasVinculadas.length > 0;
@@ -183,7 +154,6 @@ export default function VinculoUsuarioEmpresa({
         if (!possuiContextoSalvo) {
             setUsuariosVinculados([]);
             setEmpresasVinculadas([]);
-            setOpcoesUsuarios([]);
             setOpcoesEmpresas([]);
             return;
         }
@@ -193,22 +163,24 @@ export default function VinculoUsuarioEmpresa({
         setMensagemValidacao("");
 
         try {
-            const parametroContexto = estaNoFormularioEmpresa ? `empresaId=${idContexto}` : `usuarioId=${idContexto}`;
-            const respostaVinculos = await requisitarAPI(`/api/empresas/usuarios?${parametroContexto}`, {
-                method: "GET",
-            });
-            const respostaDisponiveis = await requisitarAPI(`/api/empresas/usuarios?${parametroContexto}&disponiveis=true`, {
-                method: "GET",
-            });
-
             if (estaNoFormularioEmpresa) {
+                const respostaVinculos = await requisitarAPI(`/api/empresas/usuarios?empresaId=${idContexto}`, {
+                    method: "GET",
+                });
                 const vinculos = obterListaDados<UsuarioVinculoApi>(respostaVinculos.dados);
-                const usuarios = obterListaDados<UsuarioDisponivelApi>(respostaDisponiveis.dados);
 
                 setUsuariosVinculados(vinculos.map(mapearUsuarioVinculado));
-                setOpcoesUsuarios(criarOpcoesUsuarios(usuarios));
+                setEmpresasVinculadas([]);
+                setOpcoesEmpresas([]);
                 return;
             }
+
+            const respostaVinculos = await requisitarAPI(`/api/empresas/usuarios?usuarioId=${idUsuario}`, {
+                method: "GET",
+            });
+            const respostaDisponiveis = await requisitarAPI(`/api/empresas/usuarios?usuarioId=${idUsuario}&disponiveis=true`, {
+                method: "GET",
+            });
 
             const vinculos = obterListaDados<EmpresaVinculoApi>(respostaVinculos.dados);
             const empresas = obterListaDados<EmpresaDisponivelApi>(respostaDisponiveis.dados);
@@ -224,7 +196,7 @@ export default function VinculoUsuarioEmpresa({
         } finally {
             setCarregando(false);
         }
-    }, [estaNoFormularioEmpresa, idContexto, possuiContextoSalvo]);
+    }, [estaNoFormularioEmpresa, idContexto, idUsuario, possuiContextoSalvo]);
 
     useEffect(() => {
         const carregamentoInicial = window.setTimeout(() => {
@@ -241,23 +213,18 @@ export default function VinculoUsuarioEmpresa({
         }
 
         if (!opcaoSelecionada) {
-            setMensagemValidacao("Selecione um item antes de adicionar o vínculo.");
+            setMensagemValidacao("Selecione uma empresa antes de adicionar o vínculo.");
             return;
         }
 
         const idSelecionado = Number(opcaoSelecionada.value);
 
         if (!Number.isInteger(idSelecionado) || idSelecionado <= 0) {
-            setMensagemValidacao("Selecione um item válido para o vínculo.");
+            setMensagemValidacao("Selecione uma empresa válida para o vínculo.");
             return;
         }
 
-        if (estaNoFormularioEmpresa && usuariosVinculados.some((usuario) => usuario.id === idSelecionado)) {
-            setMensagemValidacao("Este usuário já está vinculado à empresa.");
-            return;
-        }
-
-        if (!estaNoFormularioEmpresa && empresasVinculadas.some((empresa) => empresa.id === idSelecionado)) {
+        if (empresasVinculadas.some((empresa) => empresa.id === idSelecionado)) {
             setMensagemValidacao("Esta empresa já está vinculada ao usuário.");
             return;
         }
@@ -270,8 +237,8 @@ export default function VinculoUsuarioEmpresa({
             const resposta = await requisitarAPI("/api/empresas/usuarios", {
                 method: "POST",
                 body: {
-                    usuarioId: estaNoFormularioEmpresa ? idSelecionado : idUsuario,
-                    empresaId: estaNoFormularioEmpresa ? idEmpresa : idSelecionado,
+                    usuarioId: idUsuario,
+                    empresaId: idSelecionado,
                 },
             });
 
@@ -351,12 +318,12 @@ export default function VinculoUsuarioEmpresa({
 
         try {
             const resposta = await requisitarAPI("/api/empresas/usuarios", {
-                    method: "PATCH",
-                    body: {
-                        usuarioId: idUsuario,
-                        empresaId: idEmpresaPadraoParaConfirmar,
-                    },
-                });
+                method: "PATCH",
+                body: {
+                    usuarioId: idUsuario,
+                    empresaId: idEmpresaPadraoParaConfirmar,
+                },
+            });
 
             setIdEmpresaPadraoParaConfirmar(null);
             setMensagemResposta(resposta.msg || "Empresa padrão atualizada com sucesso.");
@@ -375,55 +342,63 @@ export default function VinculoUsuarioEmpresa({
     return (
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-4">
-                <h3 className="text-base font-bold text-slate-900">{tituloSecao}</h3>
-                <p className="mt-1 text-sm text-slate-500">{textoAuxiliar}</p>
+                <h3 className="text-base font-bold text-slate-900">
+                    {estaNoFormularioEmpresa ? "Usuários vinculados" : "Empresas vinculadas"}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                    {estaNoFormularioEmpresa
+                        ? "Consulte os usuários vinculados à empresa atual."
+                        : "Selecione empresas ativas para vincular ao usuário atual."}
+                </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-12">
-                <div className="md:col-span-5">
-                    <label className="block text-sm font-semibold text-slate-700" htmlFor={`vinculo-contexto-${form}`}>
-                        {labelContextoFixo}
-                    </label>
-                    <input
-                        id={`vinculo-contexto-${form}`}
-                        type="text"
-                        value={valorContextoFixo}
-                        disabled
-                        className="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-500 shadow-sm"
-                    />
-                </div>
+            {!estaNoFormularioEmpresa && (
+                <div className="grid gap-4 md:grid-cols-12">
+                    <div className="md:col-span-5">
+                        <label className="block text-sm font-semibold text-slate-700" htmlFor={`vinculo-contexto-${form}`}>
+                            Usuário atual
+                        </label>
+                        <input
+                            id={`vinculo-contexto-${form}`}
+                            type="text"
+                            value={valorContextoFixo}
+                            disabled
+                            className="mt-1 block w-full rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-500 shadow-sm"
+                        />
+                    </div>
 
-                <div className="md:col-span-5">
-                    <Seletor
-                        id={`vinculo-${form}`}
-                        label={labelSeletor}
-                        options={opcoesDisponiveis}
-                        value={opcaoSelecionada}
-                        onChange={(opcao) => {
-                            setOpcaoSelecionada(opcao);
-                            setMensagemValidacao("");
-                        }}
-                        placeholder={placeholderSeletor}
-                        isDisabled={carregando || !possuiContextoSalvo}
-                        isClearable
-                        className="mb-0"
-                    />
-                </div>
+                    <div className="md:col-span-5">
+                        <Seletor
+                            id={`vinculo-${form}`}
+                            label="Empresa"
+                            options={opcoesEmpresas}
+                            value={opcaoSelecionada}
+                            onChange={(opcao) => {
+                                setOpcaoSelecionada(opcao);
+                                setMensagemValidacao("");
+                            }}
+                            placeholder="Selecione uma empresa"
+                            isDisabled={carregando || !possuiContextoSalvo}
+                            isClearable
+                            className="mb-0"
+                        />
+                    </div>
 
-                <div className="flex items-end md:col-span-2">
-                    <Botao
-                        size="sm"
-                        label="Adicionar"
-                        icon={<FaPlus />}
-                        onClick={adicionarVinculoSelecionado}
-                        disabled={carregando || !possuiContextoSalvo}
-                        loading={carregando}
-                        variant="outline-primary"
-                        type="button"
-                        className="w-full"
-                    />
+                    <div className="flex items-end md:col-span-2">
+                        <Botao
+                            size="sm"
+                            label="Adicionar"
+                            icon={<FaPlus />}
+                            onClick={adicionarVinculoSelecionado}
+                            disabled={carregando || !possuiContextoSalvo}
+                            loading={carregando}
+                            variant="outline-primary"
+                            type="button"
+                            className="w-full"
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
 
             {mensagemValidacao && (
                 <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
@@ -440,30 +415,16 @@ export default function VinculoUsuarioEmpresa({
                     <div className="divide-y divide-slate-200">
                         {estaNoFormularioEmpresa
                             ? usuariosVinculadosPaginados.map((usuario) => (
-                                <div key={usuario.vinculoId} className="flex flex-col gap-3 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <p className="text-sm font-semibold text-slate-900">{usuario.nome}</p>
-                                            {usuario.empresaPadrao && (
-                                                <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
-                                                    Empresa padrão
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-slate-500">{usuario.email}</p>
+                                <div key={usuario.vinculoId} className="bg-white p-3">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <p className="text-sm font-semibold text-slate-900">{usuario.nome}</p>
+                                        {usuario.empresaPadrao && (
+                                            <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                                                Empresa padrão
+                                            </span>
+                                        )}
                                     </div>
-
-                                    <Botao
-                                        size="sm"
-                                        label="Remover"
-                                        icon={<FaTrash />}
-                                        onClick={() => abrirConfirmacaoRemocao(usuario.vinculoId)}
-                                        disabled={carregando}
-                                        loading={false}
-                                        variant="outline-danger"
-                                        type="button"
-                                        className="w-full sm:w-auto"
-                                    />
+                                    <p className="text-sm text-slate-500">{usuario.email || "-"}</p>
                                 </div>
                             ))
                             : empresasVinculadasPaginadas.map((empresa) => (
@@ -509,6 +470,7 @@ export default function VinculoUsuarioEmpresa({
                                     </div>
                                 </div>
                             ))}
+
                         {estaNoFormularioEmpresa ? (
                             <Paginacao
                                 paginaAtual={paginaUsuariosVinculados}
@@ -539,7 +501,11 @@ export default function VinculoUsuarioEmpresa({
                     </div>
                 ) : (
                     <div className="bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                        {possuiContextoSalvo ? textoEstadoVazio : "Salve o registro para gerenciar vínculos."}
+                        {possuiContextoSalvo
+                            ? estaNoFormularioEmpresa
+                                ? "Nenhum usuário vinculado a esta empresa."
+                                : "Nenhuma empresa vinculada a este usuário."
+                            : "Salve o registro para consultar vínculos."}
                     </div>
                 )}
             </div>
@@ -569,6 +535,7 @@ export default function VinculoUsuarioEmpresa({
                 confirmLabel="Confirmar"
                 cancelLabel="Cancelar"
             />
+
             <ModalCarregamento
                 show={carregando}
                 text={textoCarregamento}

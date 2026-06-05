@@ -418,7 +418,7 @@ export default function ModalCadastroEmpresa({
                             />
                         ) : (
                             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm font-medium text-amber-800">
-                                Salve a empresa antes de gerenciar usuários vinculados.
+                                Salve a empresa antes de consultar usuários vinculados.
                             </div>
                         )
                     )}
