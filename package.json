@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.0.1",
+    "@mui/x-charts": "^9.4.0",
     "@types/nodemailer": "^8.0.0",
     "jsonwebtoken": "^9.0.3",
     "next": "16.2.4",
