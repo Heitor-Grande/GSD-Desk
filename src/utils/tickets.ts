@@ -32,15 +32,21 @@ export function usuarioPodeVisualizarTicket({
     const usuarioAgenteSuporte = perfilNormalizado === "agente de suporte";
     const usuarioClienteManager = perfilNormalizado === "cliente manager";
     const isResponsavel = parseInt(ticket.responsavel_id.toString()) === idUsuario;
+    const isAdmin = perfilNormalizado === "admin";
 
     if (isResponsavel) {
+        return true;
+    }
+
+    if (isAdmin) {
+
         return true;
     }
 
     if (usuarioAgenteSuporte) {
         const agenteId = parseInt(ticket.agente_id?.toString() || "0");
 
-        return !contexto.suporte_visualiza_apenas_tickets_proprios
+        return contexto.suporte_visualiza_apenas_tickets_proprios == false
             || agenteId === idUsuario
             || ticket.status === STATUS_INICIAL_TICKET;
     }

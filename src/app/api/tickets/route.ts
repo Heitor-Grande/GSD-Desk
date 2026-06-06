@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
             [empresaNavegacaoId, idUsuario]
         );
         const contexto = resultadoContexto.rows[0];
-
+        
         if (!contexto) {
             return criarRespostaApi(false, "Empresa não encontrada ou inativa.", null, 404);
         }
