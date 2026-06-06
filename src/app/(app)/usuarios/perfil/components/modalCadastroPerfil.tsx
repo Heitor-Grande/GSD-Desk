@@ -10,7 +10,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Modal } from "react-bootstrap";
 import { FaExclamationTriangle, FaSave, FaTimes, FaTrash } from "react-icons/fa";
 
-export type RecursoPermissaoPerfil = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil" | "ticket";
+export type RecursoPermissaoPerfil = "dashboard" | "usuario" | "empresa" | "produto_empresa" | "configuracao" | "perfil" | "ticket";
 
 export type PermissaoPerfil = {
     criar: boolean;
@@ -45,6 +45,7 @@ const recursosPermissao: Array<{ chave: RecursoPermissaoPerfil; titulo: string }
     { chave: "dashboard", titulo: "Dashboard" },
     { chave: "usuario", titulo: "Usuário" },
     { chave: "empresa", titulo: "Empresa" },
+    { chave: "produto_empresa", titulo: "Produtos Emp/Usr" },
     { chave: "ticket", titulo: "Tickets" },
     { chave: "configuracao", titulo: "Configuração" },
     { chave: "perfil", titulo: "Perfil" },
@@ -71,6 +72,12 @@ const permissoesIniciais: Record<RecursoPermissaoPerfil, PermissaoPerfil> = {
         visualizar: false,
     },
     empresa: {
+        criar: false,
+        deletar: false,
+        atualizar: false,
+        visualizar: false,
+    },
+    produto_empresa: {
         criar: false,
         deletar: false,
         atualizar: false,
@@ -113,6 +120,7 @@ function clonarPermissoes(permissoes: Record<RecursoPermissaoPerfil, PermissaoPe
         dashboard: { ...permissoes.dashboard },
         usuario: { ...permissoes.usuario },
         empresa: { ...permissoes.empresa },
+        produto_empresa: { ...permissoes.produto_empresa },
         ticket: { ...permissoes.ticket },
         configuracao: { ...permissoes.configuracao },
         perfil: { ...permissoes.perfil },
@@ -134,6 +142,10 @@ function normalizarPermissoesPerfil(permissoes: Partial<Record<RecursoPermissaoP
         empresa: {
             ...permissoesIniciais.empresa,
             ...permissoes.empresa,
+        },
+        produto_empresa: {
+            ...permissoesIniciais.produto_empresa,
+            ...permissoes.produto_empresa,
         },
         ticket: {
             ...permissoesIniciais.ticket,
@@ -431,7 +443,7 @@ export default function ModalCadastroPerfil({
                                         <tbody>
                                             {recursosPermissao.map((recurso) => (
                                                 <tr key={recurso.chave}>
-                                                    <td className="border-t border-slate-100 px-3 py-3 font-semibold text-slate-800">{recurso.titulo == "Perfil" || recurso.titulo == "Configuração" || recurso.titulo == "Usuário" || recurso.titulo == "Empresa" ? recurso.titulo + " (adm)" : recurso.titulo + " (public)"}</td>
+                                                    <td className="border-t border-slate-100 px-3 py-3 font-semibold text-slate-800">{recurso.titulo}</td>
                                                     {acoesPermissao.map((acao) => (
                                                         <td key={`${recurso.chave}-${acao.chave}`} className="border-t border-slate-100 px-3 py-3 text-center">
                                                             <input

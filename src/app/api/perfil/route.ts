@@ -6,7 +6,7 @@ import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
 import { normalizarCampoOpcional, validarStringComConteudo } from "@/utils/validacoes";
 
-type RecursoPermissaoPerfil = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil" | "ticket";
+type RecursoPermissaoPerfil = "dashboard" | "usuario" | "empresa" | "produto_empresa" | "configuracao" | "perfil" | "ticket";
 
 type PermissaoPerfil = {
     criar: boolean;
@@ -41,7 +41,7 @@ type AtualizacaoPerfilBody = CadastroPerfilBody & {
     ativo?: unknown;
 };
 
-const recursosPermissao: RecursoPermissaoPerfil[] = ["dashboard", "usuario", "empresa", "configuracao", "perfil", "ticket"];
+const recursosPermissao: RecursoPermissaoPerfil[] = ["dashboard", "usuario", "empresa", "produto_empresa", "configuracao", "perfil", "ticket"];
 const acoesPermissao: Array<keyof PermissaoPerfil> = ["criar", "deletar", "atualizar", "visualizar"];
 
 /**

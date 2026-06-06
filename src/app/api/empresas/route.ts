@@ -57,12 +57,6 @@ export async function DELETE(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuario);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem excluir empresas.", null, 403);
-        }
-
         const id = Number(request.nextUrl.searchParams.get("id"));
 
         if (!Number.isInteger(id) || id <= 0) {
@@ -217,12 +211,6 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuario);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem cadastrar empresas.", null, 403);
-        }
-
         const body = await request.json() as CadastroEmpresaBody;
         const fantasia = validarStringComConteudo(body.fantasia) ? body.fantasia.trim() : "";
         const cnpj = normalizarCnpj(body.cnpj);
@@ -330,12 +318,6 @@ export async function PUT(request: NextRequest) {
 
         if (!idUsuario) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
-        }
-
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuario);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem atualizar empresas.", null, 403);
         }
 
         const body = await request.json() as CadastroEmpresaBody;

@@ -4,7 +4,6 @@ import { registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
-import { verificarUsuarioAdministrador } from "@/utils/usuarioAdmin";
 import { normalizarCampoOpcional, validarStringComConteudo } from "@/utils/validacoes";
 
 type EntidadeAtiva = {
@@ -81,7 +80,7 @@ export async function GET(request: NextRequest) {
     try {
         const respostaPermissao = await verificarPermissaoAPI({
             request: request,
-            recurso: "empresa",
+            recurso: "produto_empresa",
             acao: "visualizar",
         });
 
@@ -139,7 +138,7 @@ export async function POST(request: NextRequest) {
     try {
         const respostaPermissao = await verificarPermissaoAPI({
             request: request,
-            recurso: "empresa",
+            recurso: "produto_empresa",
             acao: "criar",
         });
 
@@ -231,7 +230,7 @@ export async function PUT(request: NextRequest) {
     try {
         const respostaPermissao = await verificarPermissaoAPI({
             request: request,
-            recurso: "empresa",
+            recurso: "produto_empresa",
             acao: "atualizar",
         });
 
@@ -345,7 +344,7 @@ export async function DELETE(request: NextRequest) {
     try {
         const respostaPermissao = await verificarPermissaoAPI({
             request: request,
-            recurso: "empresa",
+            recurso: "produto_empresa",
             acao: "deletar",
         });
 

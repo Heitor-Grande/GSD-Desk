@@ -30,7 +30,7 @@ type MenuItem = {
     children?: MenuItem[];
 };
 
-type RecursoPermissao = "dashboard" | "usuario" | "empresa" | "configuracao" | "perfil" | "ticket";
+type RecursoPermissao = "dashboard" | "usuario" | "empresa" | "produto_empresa" | "configuracao" | "perfil" | "ticket";
 type AcaoPermissao = "visualizar" | "criar" | "atualizar" | "deletar";
 type PermissoesPerfil = Record<RecursoPermissao, Record<AcaoPermissao, boolean>>;
 

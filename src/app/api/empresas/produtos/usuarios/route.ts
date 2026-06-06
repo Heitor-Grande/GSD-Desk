@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
     try {
         const respostaPermissao = await verificarPermissaoAPI({
             request: request,
-            recurso: "empresa",
+            recurso: "produto_empresa",
             acao: "visualizar",
         });
 
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
     try {
         const respostaPermissao = await verificarPermissaoAPI({
             request: request,
-            recurso: "empresa",
+            recurso: "produto_empresa",
             acao: "criar",
         });
 
@@ -297,7 +297,7 @@ export async function DELETE(request: NextRequest) {
     try {
         const respostaPermissao = await verificarPermissaoAPI({
             request: request,
-            recurso: "empresa",
+            recurso: "produto_empresa",
             acao: "deletar",
         });
 
