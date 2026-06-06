@@ -34,6 +34,7 @@ export type VinculoUsuarioEmpresaProps = {
     idUsuario?: number | null;
     idEmpresa?: number | null;
     nomeContexto?: string;
+    somenteLeitura?: boolean;
 };
 
 type OpcaoVinculo = {
@@ -109,6 +110,7 @@ export default function VinculoUsuarioEmpresa({
     idUsuario,
     idEmpresa,
     nomeContexto,
+    somenteLeitura = false,
 }: VinculoUsuarioEmpresaProps) {
     const [usuariosVinculados, setUsuariosVinculados] = useState<UsuarioVinculo[]>([]);
     const [empresasVinculadas, setEmpresasVinculadas] = useState<EmpresaVinculo[]>([]);
@@ -352,7 +354,7 @@ export default function VinculoUsuarioEmpresa({
                 </p>
             </div>
 
-            {!estaNoFormularioEmpresa && (
+            {!estaNoFormularioEmpresa && !somenteLeitura && (
                 <div className="grid gap-4 md:grid-cols-12">
                     <div className="md:col-span-5">
                         <label className="block text-sm font-semibold text-slate-700" htmlFor={`vinculo-contexto-${form}`}>
@@ -441,6 +443,7 @@ export default function VinculoUsuarioEmpresa({
                                         <p className="text-sm text-slate-500">{empresa.cnpj}</p>
                                     </div>
 
+                                    {!somenteLeitura && (
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                                         {!empresa.empresaPadrao && (
                                             <Botao
@@ -468,6 +471,7 @@ export default function VinculoUsuarioEmpresa({
                                             className="w-full sm:w-auto"
                                         />
                                     </div>
+                                    )}
                                 </div>
                             ))}
 

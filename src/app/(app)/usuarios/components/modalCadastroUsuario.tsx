@@ -129,6 +129,7 @@ export default function ModalCadastroUsuario({
     const [modalConfirmacaoExclusaoAberto, setModalConfirmacaoExclusaoAberto] = useState(false);
 
     const estaVisualizandoUsuario = typeof idUsuario === "number" && idUsuario > 0;
+    const usuarioAdministradorSelecionado = estaVisualizandoUsuario && formulario.isAdmin;
 
     function atualizarCampoFormulario(campo: keyof DadosCadastroUsuario, valor: string | boolean | number | OpcaoPerfil | null) {
         setFormulario((estadoAtual) => ({
@@ -208,6 +209,11 @@ export default function ModalCadastroUsuario({
     async function cadastrarUsuario(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setMensagemResposta("");
+
+        if (usuarioAdministradorSelecionado) {
+            setMensagemResposta("Usuários administradores não podem ser editados por este formulário.");
+            return;
+        }
 
         if (formulario.senha !== formulario.confirmarSenha) {
             setMensagemResposta("As senhas informadas não conferem.");
@@ -356,7 +362,7 @@ export default function ModalCadastroUsuario({
                                     value={formulario.nome}
                                     placeholder="Nome completo"
                                     onChange={(event) => atualizarCampoFormulario("nome", event.target.value)}
-                                    disabled={carregando}
+                                    disabled={carregando || usuarioAdministradorSelecionado}
                                     required
                                     className="mb-0"
                                 />
@@ -370,7 +376,7 @@ export default function ModalCadastroUsuario({
                                     value={formulario.email}
                                     placeholder="usuario@empresa.com"
                                     onChange={(event) => atualizarCampoFormulario("email", event.target.value)}
-                                    disabled={carregando}
+                                    disabled={carregando || usuarioAdministradorSelecionado}
                                     required
                                     className="mb-0"
                                 />
@@ -384,7 +390,7 @@ export default function ModalCadastroUsuario({
                                     value={formulario.telefone}
                                     placeholder="(00) 00000-0000"
                                     onChange={(event) => atualizarCampoFormulario("telefone", event.target.value)}
-                                    disabled={carregando}
+                                    disabled={carregando || usuarioAdministradorSelecionado}
                                     required={false}
                                     className="mb-0"
                                 />
@@ -398,7 +404,7 @@ export default function ModalCadastroUsuario({
                                     value={formulario.documento}
                                     placeholder="CPF ou CNPJ"
                                     onChange={(event) => atualizarCampoFormulario("documento", event.target.value)}
-                                    disabled={carregando}
+                                    disabled={carregando || usuarioAdministradorSelecionado}
                                     required={false}
                                     className="mb-0"
                                 />
@@ -412,7 +418,7 @@ export default function ModalCadastroUsuario({
                                     value={formulario.perfil}
                                     onChange={(opcao) => atualizarCampoFormulario("perfil", opcao)}
                                     placeholder="Selecione o perfil"
-                                    isDisabled={carregando}
+                                    isDisabled={carregando || usuarioAdministradorSelecionado}
                                     isClearable
                                     className="mb-0"
                                 />
@@ -425,7 +431,7 @@ export default function ModalCadastroUsuario({
                                         className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                                         type="checkbox"
                                         checked={formulario.ativo}
-                                        disabled={carregando}
+                                        disabled={carregando || usuarioAdministradorSelecionado}
                                         onChange={(event) => atualizarCampoFormulario("ativo", event.target.checked)}
                                     />
                                     <label className="text-sm font-semibold text-slate-700" htmlFor="usuario-ativo">
@@ -486,7 +492,7 @@ export default function ModalCadastroUsuario({
                                     value={formulario.senha}
                                     placeholder={estaVisualizandoUsuario ? "Digite uma nova senha" : "Senha inicial"}
                                     onChange={(event) => atualizarCampoFormulario("senha", event.target.value)}
-                                    disabled={carregando}
+                                    disabled={carregando || usuarioAdministradorSelecionado}
                                     required={!estaVisualizandoUsuario}
                                     className="mb-0"
                                     helpText="A senha deve ter pelo menos 6 caracteres."
@@ -502,7 +508,7 @@ export default function ModalCadastroUsuario({
                                     value={formulario.confirmarSenha}
                                     placeholder={estaVisualizandoUsuario ? "Repita a nova senha" : "Repita a senha inicial"}
                                     onChange={(event) => atualizarCampoFormulario("confirmarSenha", event.target.value)}
-                                    disabled={carregando}
+                                    disabled={carregando || usuarioAdministradorSelecionado}
                                     required={!estaVisualizandoUsuario}
                                     className="mb-0"
                                 />
@@ -514,6 +520,7 @@ export default function ModalCadastroUsuario({
                                         form="usuario"
                                         idUsuario={idUsuario}
                                         nomeContexto={formulario.nome}
+                                        somenteLeitura={usuarioAdministradorSelecionado}
                                     />
                                 </div>
                             )}
@@ -527,7 +534,7 @@ export default function ModalCadastroUsuario({
                                 label="Excluir"
                                 icon={<FaTrash />}
                                 onClick={() => setModalConfirmacaoExclusaoAberto(true)}
-                                disabled={carregando}
+                                disabled={carregando || usuarioAdministradorSelecionado}
                                 loading={false}
                                 variant="outline-danger"
                                 type="button"
@@ -552,7 +559,7 @@ export default function ModalCadastroUsuario({
                             label={estaVisualizandoUsuario ? "Salvar alterações" : "Salvar usuário"}
                             icon={<FaSave />}
                             onClick={() => undefined}
-                            disabled={carregando}
+                            disabled={carregando || usuarioAdministradorSelecionado}
                             loading={carregando}
                             variant="outline-primary"
                             type="submit"
