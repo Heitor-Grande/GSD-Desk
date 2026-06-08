@@ -2,6 +2,7 @@
 
 import { Botao } from "@/components/inputs/button";
 import { CampoTexto } from "@/components/inputs/input";
+import { Seletor } from "@/components/inputs/select";
 import VinculoUsuarioEmpresa from "@/components/VinculoUsuarioEmpresa";
 import ModalConfirmacao from "@/components/modals/confirmModal";
 import { ModalCarregamento } from "@/components/modals/loading";
@@ -19,6 +20,7 @@ type DadosCadastroEmpresa = {
     email: string;
     telefone: string;
     ativo: boolean;
+    superior: OpcaoSeletor | null;
     exigirVinculoProduto: boolean;
     suporteVisualizaApenasTicketsProprios: boolean;
     criadoEm: string;
@@ -32,6 +34,8 @@ type EmpresaDetalhadaApi = {
     email: string | null;
     telefone: string | null;
     ativo: boolean;
+    superior_id: number | null;
+    superior_fantasia?: string | null;
     exigir_vinculo_produto: boolean;
     suporte_visualiza_apenas_tickets_proprios: boolean;
     criado_em: string;
@@ -44,6 +48,16 @@ type ModalCadastroEmpresaProps = {
     aoFechar: () => void;
 };
 
+type OpcaoSeletor = {
+    label: string;
+    value: string;
+};
+
+type EmpresaSuperiorApi = {
+    id: number;
+    fantasia: string;
+};
+
 type AbaEmpresa = "dados" | "usuarios" | "produtos" | "regras";
 
 const estadoInicialFormulario: DadosCadastroEmpresa = {
@@ -53,6 +67,7 @@ const estadoInicialFormulario: DadosCadastroEmpresa = {
     email: "",
     telefone: "",
     ativo: true,
+    superior: null,
     exigirVinculoProduto: false,
     suporteVisualizaApenasTicketsProprios: true,
     criadoEm: "",
@@ -88,6 +103,12 @@ function mapearEmpresaParaFormulario(empresa: EmpresaDetalhadaApi): DadosCadastr
         email: empresa.email || "",
         telefone: empresa.telefone || "",
         ativo: empresa.ativo,
+        superior: empresa.superior_id
+            ? {
+                label: empresa.superior_fantasia || "Empresa superior",
+                value: String(empresa.superior_id),
+            }
+            : null,
         exigirVinculoProduto: empresa.exigir_vinculo_produto,
         suporteVisualizaApenasTicketsProprios: empresa.suporte_visualiza_apenas_tickets_proprios,
         criadoEm: formatarDataHoraFormulario(empresa.criado_em),
@@ -110,15 +131,37 @@ export default function ModalCadastroEmpresa({
     const [mensagemResposta, setMensagemResposta] = useState("");
     const [modalConfirmacaoExclusaoAberto, setModalConfirmacaoExclusaoAberto] = useState(false);
     const [abaAtiva, setAbaAtiva] = useState<AbaEmpresa>("dados");
+    const [opcoesSuperior, setOpcoesSuperior] = useState<OpcaoSeletor[]>([]);
 
     const estaVisualizandoEmpresa = typeof idEmpresa === "number" && idEmpresa > 0;
 
-    function atualizarCampoFormulario(campo: keyof DadosCadastroEmpresa, valor: string | boolean) {
+    function atualizarCampoFormulario(campo: keyof DadosCadastroEmpresa, valor: string | boolean | OpcaoSeletor | null) {
         setFormulario((estadoAtual) => ({
             ...estadoAtual,
             [campo]: campo === "cnpj" && typeof valor === "string" ? formatarCnpj(valor) : valor,
         }));
     }
+
+    const carregarOpcoesSuperior = useCallback(async () => {
+        try {
+            const parametroEmpresaAtual = idEmpresa ? `&empresaAtualId=${idEmpresa}` : "";
+            const resposta = await requisitarAPI(`/api/empresas?superiores=true${parametroEmpresaAtual}`, {
+                method: "GET",
+            });
+            const empresas = Array.isArray(resposta.dados) ? resposta.dados as EmpresaSuperiorApi[] : [];
+
+            setOpcoesSuperior(empresas.map((empresa) => ({
+                label: empresa.fantasia,
+                value: String(empresa.id),
+            })));
+        } catch (erro) {
+            const mensagemErro = erro instanceof Error
+                ? erro.message
+                : "Não foi possível carregar as empresas superiores.";
+
+            setMensagemResposta(mensagemErro);
+        }
+    }, [idEmpresa]);
 
     const carregarEmpresaSelecionada = useCallback(async () => {
         if (!idEmpresa) {
@@ -158,6 +201,7 @@ export default function ModalCadastroEmpresa({
         setCarregando(false);
         setModalConfirmacaoExclusaoAberto(false);
         setAbaAtiva("dados");
+        setOpcoesSuperior([]);
     }
 
     function fecharModalCadastroEmpresa() {
@@ -179,6 +223,7 @@ export default function ModalCadastroEmpresa({
                     email: formulario.email,
                     telefone: formulario.telefone,
                     ativo: formulario.ativo,
+                    superiorId: formulario.superior ? Number(formulario.superior.value) : null,
                     exigirVinculoProduto: formulario.exigirVinculoProduto,
                     suporteVisualizaApenasTicketsProprios: formulario.suporteVisualizaApenasTicketsProprios,
                 },
@@ -244,6 +289,8 @@ export default function ModalCadastroEmpresa({
         }
 
         const carregamentoInicial = window.setTimeout(() => {
+            void carregarOpcoesSuperior();
+
             if (!idEmpresa) {
                 setFormulario(estadoInicialFormulario);
                 setMensagemResposta("");
@@ -254,7 +301,7 @@ export default function ModalCadastroEmpresa({
         }, 0);
 
         return () => window.clearTimeout(carregamentoInicial);
-    }, [aberto, idEmpresa, carregarEmpresaSelecionada]);
+    }, [aberto, idEmpresa, carregarEmpresaSelecionada, carregarOpcoesSuperior]);
 
     return (
         <>
@@ -358,6 +405,20 @@ export default function ModalCadastroEmpresa({
                                     onChange={(event) => atualizarCampoFormulario("telefone", event.target.value)}
                                     disabled={carregando}
                                     required={false}
+                                    className="mb-0"
+                                />
+                            </div>
+
+                            <div className="md:col-span-6">
+                                <Seletor
+                                    id="empresa-superior"
+                                    label="Superior"
+                                    options={opcoesSuperior}
+                                    value={formulario.superior}
+                                    onChange={(opcao) => atualizarCampoFormulario("superior", opcao)}
+                                    placeholder="Nenhum superior"
+                                    isDisabled={carregando}
+                                    isClearable
                                     className="mb-0"
                                 />
                             </div>

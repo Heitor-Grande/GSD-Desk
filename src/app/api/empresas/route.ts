@@ -13,10 +13,22 @@ type EmpresaListada = {
     email: string | null;
     telefone: string | null;
     ativo: boolean;
+    superior_id: number | null;
+    superior_fantasia?: string | null;
     exigir_vinculo_produto: boolean;
     suporte_visualiza_apenas_tickets_proprios: boolean;
     criado_em: Date;
     atualizado_em: Date;
+};
+
+type EmpresaArvoreBanco = {
+    id: number;
+    fantasia: string;
+    superior_id: number | null;
+};
+
+type EmpresaArvoreNode = EmpresaArvoreBanco & {
+    children: EmpresaArvoreNode[];
 };
 
 type CadastroEmpresaBody = {
@@ -26,12 +38,115 @@ type CadastroEmpresaBody = {
     email?: unknown;
     telefone?: unknown;
     ativo?: unknown;
+    superiorId?: unknown;
+    superior_id?: unknown;
     exigirVinculoProduto?: unknown;
     suporteVisualizaApenasTicketsProprios?: unknown;
 };
 
 function normalizarCnpj(valor: unknown): string {
     return validarStringComConteudo(valor) ? valor.replace(/\D/g, "") : "";
+}
+
+function montarArvoreEmpresas(empresas: EmpresaArvoreBanco[]): EmpresaArvoreNode[] {
+    const mapaEmpresas = new Map<number, EmpresaArvoreNode>();
+
+    empresas.forEach((empresa) => {
+        mapaEmpresas.set(empresa.id, {
+            ...empresa,
+            children: [],
+        });
+    });
+
+    function possuiCiclo(idEmpresa: number, idSuperior: number): boolean {
+        const visitados = new Set<number>([idEmpresa]);
+        let idAtual: number | null = idSuperior;
+
+        while (idAtual) {
+            if (visitados.has(idAtual)) {
+                return true;
+            }
+
+            visitados.add(idAtual);
+            idAtual = mapaEmpresas.get(idAtual)?.superior_id ?? null;
+        }
+
+        return false;
+    }
+
+    const raizes: EmpresaArvoreNode[] = [];
+
+    mapaEmpresas.forEach((empresa) => {
+        if (!empresa.superior_id) {
+            raizes.push(empresa);
+            return;
+        }
+
+        const superior = mapaEmpresas.get(empresa.superior_id);
+
+        if (!superior || possuiCiclo(empresa.id, empresa.superior_id)) {
+            raizes.push(empresa);
+            return;
+        }
+
+        superior.children.push(empresa);
+    });
+
+    function ordenarNos(nos: EmpresaArvoreNode[]) {
+        nos.sort((empresaA, empresaB) => empresaA.fantasia.localeCompare(empresaB.fantasia, "pt-BR"));
+        nos.forEach((empresa) => ordenarNos(empresa.children));
+    }
+
+    ordenarNos(raizes);
+
+    return raizes;
+}
+
+function normalizarIdOpcional(valor: unknown): number | null {
+    if (valor === null || valor === undefined || valor === "") {
+        return null;
+    }
+
+    const id = typeof valor === "number" ? valor : Number(valor);
+
+    return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+async function validarEmpresaSuperior({
+    idSuperior,
+    idUsuario,
+    idEmpresaAtual,
+}: {
+    idSuperior: number | null;
+    idUsuario: number;
+    idEmpresaAtual?: number | null;
+}): Promise<boolean> {
+    if (!idSuperior) {
+        return true;
+    }
+
+    if (idEmpresaAtual && idSuperior === idEmpresaAtual) {
+        return false;
+    }
+
+    const parametros = idEmpresaAtual ? [idSuperior, idUsuario, idEmpresaAtual] : [idSuperior, idUsuario];
+    const filtroEmpresaAtual = idEmpresaAtual ? "and e.id <> $3" : "";
+    const resultado = await consultarBancoDados<{ id: number }>(
+        `
+            select e.id
+            from empresas e
+            inner join usuarios_empresas ue on ue.empresa_id = e.id
+            where e.id = $1
+                and ue.usuario_id = $2
+                and e.ativo = true
+                and e.superior_id is null
+                ${filtroEmpresaAtual}
+            limit 1
+        `,
+        parametros
+    );
+
+    return Boolean(resultado.rows[0]);
 }
 
 /**
@@ -76,6 +191,7 @@ export async function DELETE(request: NextRequest) {
                     email,
                     telefone,
                     ativo,
+                    superior_id,
                     exigir_vinculo_produto,
                     suporte_visualiza_apenas_tickets_proprios,
                     criado_em,
@@ -98,7 +214,11 @@ export async function DELETE(request: NextRequest) {
         });
 
         return criarRespostaApi(true, "Empresa excluída com sucesso.", null);
-    } catch {
+    } catch (erro) {
+        if (erro instanceof Error && "code" in erro && erro.code === "23503") {
+            return criarRespostaApi(false, "Não foi possível excluir a empresa porque ela possui registros vinculados.", null, 409);
+        }
+
         return criarRespostaApi(false, "Não foi possível excluir a empresa.", null, 500);
     }
 }
@@ -124,23 +244,29 @@ export async function GET(request: NextRequest) {
         }
 
         const id = Number(request.nextUrl.searchParams.get("id"));
+        const listarSuperiores = request.nextUrl.searchParams.get("superiores") === "true";
+        const listarArvore = request.nextUrl.searchParams.get("arvore") === "true";
+        const idEmpresaAtual = Number(request.nextUrl.searchParams.get("empresaAtualId"));
 
         if (Number.isInteger(id) && id > 0) {
             const resultadoEmpresa = await consultarBancoDados<EmpresaListada>(
                 `
                     select
-                        id,
-                        fantasia,
-                        cnpj,
-                        email,
-                        telefone,
-                        ativo,
-                        exigir_vinculo_produto,
-                        suporte_visualiza_apenas_tickets_proprios,
-                        criado_em,
-                        atualizado_em
-                    from empresas
-                    where id = $1
+                        e.id,
+                        e.fantasia,
+                        e.cnpj,
+                        e.email,
+                        e.telefone,
+                        e.ativo,
+                        e.superior_id,
+                        superior.fantasia as superior_fantasia,
+                        e.exigir_vinculo_produto,
+                        e.suporte_visualiza_apenas_tickets_proprios,
+                        e.criado_em,
+                        e.atualizado_em
+                    from empresas e
+                    left join empresas superior on superior.id = e.superior_id
+                    where e.id = $1
                     limit 1
                 `,
                 [id]
@@ -161,6 +287,79 @@ export async function GET(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
+        if (listarArvore) {
+            const resultadoArvore = await consultarBancoDados<EmpresaArvoreBanco>(
+                `
+                    with recursive empresas_hierarquia as (
+                        select
+                            e.id,
+                            e.fantasia,
+                            e.superior_id,
+                            array[e.id] as caminho
+                        from empresas e
+                        inner join usuarios_empresas ue on ue.empresa_id = e.id
+                        where ue.usuario_id = $1
+
+                        union
+
+                        select
+                            superior.id,
+                            superior.fantasia,
+                            superior.superior_id,
+                            eh.caminho || superior.id
+                        from empresas superior
+                        inner join empresas_hierarquia eh on eh.superior_id = superior.id
+                        where not superior.id = any(eh.caminho)
+                    )
+                    select distinct on (id)
+                        id,
+                        fantasia,
+                        superior_id
+                    from empresas_hierarquia
+                    order by id, fantasia asc
+                `,
+                [idUsuario]
+            );
+
+            return criarRespostaApi<EmpresaArvoreNode[]>(
+                true,
+                "Árvore de empresas carregada com sucesso.",
+                montarArvoreEmpresas(resultadoArvore.rows)
+            );
+        }
+
+        if (listarSuperiores) {
+            const filtrarEmpresaAtual = Number.isInteger(idEmpresaAtual) && idEmpresaAtual > 0;
+            const parametros = filtrarEmpresaAtual ? [idUsuario, idEmpresaAtual] : [idUsuario];
+            const filtroEmpresaAtual = filtrarEmpresaAtual ? "and e.id <> $2" : "";
+            const resultadoSuperiores = await consultarBancoDados<EmpresaListada>(
+                `
+                    select
+                        e.id,
+                        e.fantasia,
+                        e.cnpj,
+                        e.email,
+                        e.telefone,
+                        e.ativo,
+                        e.superior_id,
+                        e.exigir_vinculo_produto,
+                        e.suporte_visualiza_apenas_tickets_proprios,
+                        e.criado_em,
+                        e.atualizado_em
+                    from empresas e
+                    inner join usuarios_empresas ue on ue.empresa_id = e.id
+                    where ue.usuario_id = $1
+                        and e.ativo = true
+                        and e.superior_id is null
+                        ${filtroEmpresaAtual}
+                    order by e.fantasia asc
+                `,
+                parametros
+            );
+
+            return criarRespostaApi(true, "Empresas superiores listadas com sucesso.", resultadoSuperiores.rows);
+        }
+
         const resultado = await consultarBancoDados<EmpresaListada>(
             `
                 select
@@ -170,11 +369,14 @@ export async function GET(request: NextRequest) {
                     e.email,
                     e.telefone,
                     e.ativo,
+                    e.superior_id,
+                    superior.fantasia as superior_fantasia,
                     e.exigir_vinculo_produto,
                     e.suporte_visualiza_apenas_tickets_proprios,
                     e.criado_em,
                     e.atualizado_em
                 from empresas e
+                left join empresas superior on superior.id = e.superior_id
                 inner join usuarios_empresas ue on ue.empresa_id = e.id
                 where ue.usuario_id = $1
                 order by e.criado_em desc
@@ -216,6 +418,7 @@ export async function POST(request: NextRequest) {
         const email = normalizarCampoOpcional(body.email)?.toLowerCase() ?? null;
         const telefone = normalizarCampoOpcional(body.telefone);
         const ativo = obterBooleanoAtivo(body.ativo);
+        const superiorId = normalizarIdOpcional(body.superiorId ?? body.superior_id);
         const exigirVinculoProduto = typeof body.exigirVinculoProduto === "boolean"
             ? body.exigirVinculoProduto
             : false;
@@ -235,6 +438,15 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Telefone deve respeitar o limite de caracteres.", null, 400);
         }
 
+        const superiorValido = await validarEmpresaSuperior({
+            idSuperior: superiorId,
+            idUsuario: idUsuario,
+        });
+
+        if (!superiorValido) {
+            return criarRespostaApi(false, "Informe uma empresa superior válida.", null, 400);
+        }
+
         const resultado = await consultarBancoDados<EmpresaListada>(
             `
                 insert into empresas (
@@ -243,23 +455,25 @@ export async function POST(request: NextRequest) {
                     email,
                     telefone,
                     ativo,
+                    superior_id,
                     exigir_vinculo_produto,
                     suporte_visualiza_apenas_tickets_proprios,
                     criado_por
                 )
-                values ($1, $2, $3, $4, $5, $6, $7, $8)
+                values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 returning id,
                     fantasia,
                     cnpj,
                     email,
                     telefone,
                     ativo,
+                    superior_id,
                     exigir_vinculo_produto,
                     suporte_visualiza_apenas_tickets_proprios,
                     criado_em,
                     atualizado_em
             `,
-            [fantasia, cnpj, email, telefone, ativo, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, idUsuario]
+            [fantasia, cnpj, email, telefone, ativo, superiorId, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, idUsuario]
         );
 
         await consultarBancoDados(
@@ -326,6 +540,7 @@ export async function PUT(request: NextRequest) {
         const email = normalizarCampoOpcional(body.email)?.toLowerCase() ?? null;
         const telefone = normalizarCampoOpcional(body.telefone);
         const ativo = obterBooleanoAtivo(body.ativo);
+        const superiorId = normalizarIdOpcional(body.superiorId ?? body.superior_id);
         const exigirVinculoProduto = typeof body.exigirVinculoProduto === "boolean"
             ? body.exigirVinculoProduto
             : false;
@@ -349,6 +564,16 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Telefone deve respeitar o limite de caracteres.", null, 400);
         }
 
+        const superiorValido = await validarEmpresaSuperior({
+            idSuperior: superiorId,
+            idUsuario: idUsuario,
+            idEmpresaAtual: id,
+        });
+
+        if (!superiorValido) {
+            return criarRespostaApi(false, "Informe uma empresa superior válida.", null, 400);
+        }
+
         const resultadoEmpresaAntes = await consultarBancoDados<EmpresaListada>(
             `
                 select
@@ -358,6 +583,7 @@ export async function PUT(request: NextRequest) {
                     email,
                     telefone,
                     ativo,
+                    superior_id,
                     exigir_vinculo_produto,
                     suporte_visualiza_apenas_tickets_proprios,
                     criado_em,
@@ -378,23 +604,25 @@ export async function PUT(request: NextRequest) {
                     email = $3,
                     telefone = $4,
                     ativo = $5,
-                    exigir_vinculo_produto = $6,
-                    suporte_visualiza_apenas_tickets_proprios = $7,
-                    atualizado_por = $8,
+                    superior_id = $6,
+                    exigir_vinculo_produto = $7,
+                    suporte_visualiza_apenas_tickets_proprios = $8,
+                    atualizado_por = $9,
                     atualizado_em = now()
-                where id = $9
+                where id = $10
                 returning id,
                     fantasia,
                     cnpj,
                     email,
                     telefone,
                     ativo,
+                    superior_id,
                     exigir_vinculo_produto,
                     suporte_visualiza_apenas_tickets_proprios,
                     criado_em,
                     atualizado_em
             `,
-            [fantasia, cnpj, email, telefone, ativo, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, idUsuario, id]
+            [fantasia, cnpj, email, telefone, ativo, superiorId, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, idUsuario, id]
         );
 
         if (!resultado.rows[0]) {

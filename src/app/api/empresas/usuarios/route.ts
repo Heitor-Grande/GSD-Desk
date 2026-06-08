@@ -157,6 +157,7 @@ export async function GET(request: NextRequest) {
                         e.cnpj
                     from empresas e
                     where e.ativo = true
+                        and e.superior_id is not null
                         and exists (
                             select 1
                             from usuarios_empresas ue_usuario_logado
@@ -209,6 +210,7 @@ export async function GET(request: NextRequest) {
                 inner join usuarios u on u.id = ue.usuario_id
                 inner join empresas e on e.id = ue.empresa_id
                 where ue.usuario_id = $1
+                    and e.superior_id is not null
                 order by e.fantasia asc
             `,
             [usuarioId]
