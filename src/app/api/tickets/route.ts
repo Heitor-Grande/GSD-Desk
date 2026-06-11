@@ -61,6 +61,7 @@ type TicketDetalhado = TicketListado & {
     fechado_em: Date | null;
     fechado_por: number | null;
     fechado_por_nome: string | null;
+    usuario_logado_id?: number;
     usuario_pode_editar_informacoes_gerais?: boolean;
     usuario_pode_editar_responsavel?: boolean;
     usuario_pode_editar_status?: boolean;
@@ -111,6 +112,7 @@ const statusPermitidos = [
     "encerrado_resolvido",
     "encerrado_nao_resolvido",
 ];
+const STATUS_TICKET_ENCERRADO = new Set(["encerrado_resolvido", "encerrado_nao_resolvido"]);
 const TAMANHO_MAXIMO_ANEXO = 10 * 1024 * 1024;
 const TIPOS_ANEXO_PERMITIDOS = new Set([
     "image/png",
@@ -373,6 +375,7 @@ export async function GET(request: NextRequest) {
                         t.fechado_em,
                         t.fechado_por,
                         fechado_por.nome as fechado_por_nome,
+                        $3::bigint as usuario_logado_id,
                         t.responsavel_id <> $3 as usuario_pode_editar_informacoes_gerais,
                         (
                             t.responsavel_id <> $3
@@ -564,7 +567,6 @@ export async function PUT(request: NextRequest) {
             ticket_existe: boolean;
             titulo_atual: string | null;
             responsavel_atual_id: number | null;
-            usuario_pode_editar_informacoes_gerais: boolean;
             usuario_pode_editar_responsavel: boolean;
             status_atual: string | null;
             usuario_pode_editar_status: boolean;
@@ -597,22 +599,8 @@ export async function PUT(request: NextRequest) {
                             and t.empresa_id = $2
                         limit 1
                     ) as responsavel_atual_id,
-                    exists (
-                        select 1
-                        from tickets t
-                        where t.id = $1
-                            and t.empresa_id = $2
-                            and t.responsavel_id <> $5
-                    ) as usuario_pode_editar_informacoes_gerais,
                     (
                         exists (
-                            select 1
-                            from tickets t
-                            where t.id = $1
-                                and t.empresa_id = $2
-                                and t.responsavel_id <> $5
-                        )
-                        and exists (
                             select 1
                             from usuarios u
                             left join perfil p on p.id = u.perfil_id
@@ -706,15 +694,10 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Ticket não encontrado para a empresa selecionada.", null, 404);
         }
 
-        const tituloAlterado = titulo !== (validacao.titulo_atual ?? "");
         const responsavelAlterado = responsavelId !== validacao.responsavel_atual_id;
         const agenteAlterado = agenteId !== validacao.agente_atual_id;
         const statusAlterado = status !== (validacao.status_atual ?? "");
         const prioridadeAlterada = prioridade !== (validacao.prioridade_atual ?? "");
-
-        if (!validacao.usuario_pode_editar_informacoes_gerais && (tituloAlterado || responsavelAlterado || agenteAlterado || prioridadeAlterada)) {
-            return criarRespostaApi(false, "O responsável pelo ticket não pode editar as informações gerais após a criação.", null, 403);
-        }
 
         if (responsavelAlterado && !validacao.usuario_pode_editar_responsavel) {
             return criarRespostaApi(false, "Agente de Suporte não pode alterar o responsável do ticket.", null, 403);
@@ -724,16 +707,16 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Você não possui permissão para alterar o status do ticket.", null, 403);
         }
 
+        if (statusAlterado && STATUS_TICKET_ENCERRADO.has(validacao.status_atual ?? "")) {
+            return criarRespostaApi(false, "Tickets encerrados só podem ser reabertos pelo envio de uma nova mensagem.", null, 403);
+        }
+
         if (!validacao.responsavel_valido) {
             return criarRespostaApi(false, "O responsável deve ser um usuário ativo da empresa e não pode ser Agente de Suporte.", null, 400);
         }
 
         if (!validacao.agente_valido) {
             return criarRespostaApi(false, "O agente deve ser um Agente de Suporte ativo vinculado à empresa.", null, 400);
-        }
-
-        if (agenteAlterado && !validacao.usuario_pode_editar_agente) {
-            return criarRespostaApi(false, "Apenas um Agente de Suporte pode alterar o agente responsável pelo ticket.", null, 403);
         }
 
         if (!validacao.usuario_pode_editar_prioridade && prioridadeAlterada) {

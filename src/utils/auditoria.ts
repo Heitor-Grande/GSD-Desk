@@ -7,7 +7,7 @@ type DadosAuditoria = unknown;
 type RegistrarAuditoriaParams = {
     acao: AcaoAuditoria;
     usuarioId: number;
-    empresaId?: number | null;
+    empresaId: number;
     metodo?: string | null;
     rota?: string | null;
     dadosAntes?: DadosAuditoria;
@@ -39,7 +39,7 @@ function normalizarTextoOpcional(valor: string | null | undefined): string | nul
 async function registrarAuditoria({
     acao,
     usuarioId,
-    empresaId = null,
+    empresaId,
     metodo = null,
     rota = null,
     dadosAntes = null,
@@ -49,7 +49,7 @@ async function registrarAuditoria({
         throw new Error("Informe um usuário válido para registrar a auditoria.");
     }
 
-    if (empresaId !== null && !validarIdPositivo(empresaId)) {
+    if (!validarIdPositivo(empresaId)) {
         throw new Error("Informe uma empresa válida para registrar a auditoria.");
     }
 
@@ -87,4 +87,30 @@ export async function registrarAuditoriaSegura(params: RegistrarAuditoriaParams)
     } catch (erro) {
         console.error("Não foi possível registrar auditoria.", erro);
     }
+}
+
+/**
+ * Obtém a empresa padrão do usuário para auditorias de rotas globais.
+ */
+export async function obterEmpresaAuditoriaUsuario(usuarioId: number): Promise<number> {
+    if (!validarIdPositivo(usuarioId)) {
+        throw new Error("Informe um usuário válido para obter a empresa da auditoria.");
+    }
+
+    const resultado = await consultarBancoDados<{ empresa_padrao: number | null }>(
+        `
+            select empresa_padrao
+            from usuarios
+            where id = $1
+            limit 1
+        `,
+        [usuarioId]
+    );
+    const empresaId = resultado.rows[0]?.empresa_padrao ?? null;
+
+    if (!validarIdPositivo(empresaId)) {
+        throw new Error("Usuário sem empresa padrão para registrar auditoria.");
+    }
+
+    return Number(empresaId);
 }

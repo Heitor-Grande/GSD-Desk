@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
-import { registrarAuditoriaSegura } from "@/utils/auditoria";
+import { obterEmpresaAuditoriaUsuario, registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
@@ -193,6 +193,7 @@ export async function POST(request: NextRequest) {
         await registrarAuditoriaSegura({
             acao: "CREATE",
             usuarioId: idUsuario,
+            empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
             metodo: request.method,
             rota: request.nextUrl.pathname,
         });
@@ -297,6 +298,7 @@ export async function PUT(request: NextRequest) {
         await registrarAuditoriaSegura({
             acao: "UPDATE",
             usuarioId: idUsuario,
+            empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
             metodo: request.method,
             rota: request.nextUrl.pathname,
             dadosAntes: resultadoPerfilAntes.rows[0],
@@ -388,6 +390,7 @@ export async function DELETE(request: NextRequest) {
         await registrarAuditoriaSegura({
             acao: "DELETE",
             usuarioId: idUsuario,
+            empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
             metodo: request.method,
             rota: request.nextUrl.pathname,
             dadosAntes: resultado.rows[0],

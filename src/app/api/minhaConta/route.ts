@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { consultarBancoDados } from "@/services/database";
-import { registrarAuditoriaSegura } from "@/utils/auditoria";
+import { obterEmpresaAuditoriaUsuario, registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { criarHash } from "@/utils/criptografia";
 import { criarRespostaApi } from "@/utils/respostaApi";
@@ -172,6 +172,7 @@ export async function PUT(request: NextRequest) {
         await registrarAuditoriaSegura({
             acao: "UPDATE",
             usuarioId: idUsuario,
+            empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
             metodo: request.method,
             rota: request.nextUrl.pathname,
             dadosAntes: resultadoUsuarioAntes.rows[0],

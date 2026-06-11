@@ -31,6 +31,8 @@ type ResultadoMensagemId = {
 };
 
 const STATUS_COM_AGENTE = "com_agente";
+const STATUS_COM_CLIENTE = "com_cliente";
+const STATUS_TICKET_ENCERRADO = new Set(["encerrado_resolvido", "encerrado_nao_resolvido"]);
 const TAMANHO_MAXIMO_ANEXO = 10 * 1024 * 1024;
 const TIPOS_ANEXO_PERMITIDOS = new Set([
     "image/png",
@@ -215,6 +217,7 @@ export async function POST(request: NextRequest) {
         const ticketId = normalizarId(formData.get("ticketId"));
         const empresaNavegacaoId = normalizarId(formData.get("empresaNavegacaoId"));
         const conteudo = validarStringComConteudo(formData.get("conteudo")) ? String(formData.get("conteudo")).trim() : "";
+        const atualizarStatusTicket = formData.get("atualizarStatusTicket") === "true";
         const textoMensagem = obterTextoMensagem(conteudo);
         const anexos = formData.getAll("anexos").filter((valor): valor is File => valor instanceof File);
 
@@ -281,6 +284,10 @@ export async function POST(request: NextRequest) {
 
         const usuarioAgenteSuporte = normalizarNomePerfil(contexto.perfil_nome) === "agente de suporte";
         const usuarioResponsavelTicket = parseInt(contexto.responsavel_id.toString()) === idUsuario;
+        const usuarioAgenteTicket = contexto.agente_id !== null && parseInt(contexto.agente_id.toString()) === idUsuario;
+        const usuarioParticipanteFluxoTicket = usuarioResponsavelTicket || usuarioAgenteTicket;
+        const reaberturaObrigatoria = STATUS_TICKET_ENCERRADO.has(contexto.status);
+        const deveAtualizarFluxoMensagem = usuarioParticipanteFluxoTicket && (atualizarStatusTicket || reaberturaObrigatoria);
         cliente = await obterClienteBancoDados();
         await cliente.query("begin");
         transacaoAberta = true;
@@ -320,15 +327,36 @@ export async function POST(request: NextRequest) {
                         else agente_id
                     end,
                     status = case
-                        when $3::boolean = true and status = $5 then $6
+                        when $5::boolean = true and $10::boolean = true then $8
+                        when $6::boolean = true and $10::boolean = true then $9
+                        when $3::boolean = true and status = $7 then $8
                         else status
                     end,
-                    ultima_atualizacao_em = now()
+                    ultima_atualizacao_em = now(),
+                    fechado_em = case
+                        when $10::boolean = true then null
+                        else fechado_em
+                    end,
+                    fechado_por = case
+                        when $10::boolean = true then null
+                        else fechado_por
+                    end
                 where id = $1
                     and empresa_id = $2
                 returning status
             `,
-            [ticketId, empresaNavegacaoId, usuarioAgenteSuporte, idUsuario, STATUS_INICIAL_TICKET, STATUS_COM_AGENTE]
+            [
+                ticketId,
+                empresaNavegacaoId,
+                usuarioAgenteSuporte,
+                idUsuario,
+                usuarioResponsavelTicket,
+                usuarioAgenteTicket,
+                STATUS_INICIAL_TICKET,
+                STATUS_COM_AGENTE,
+                STATUS_COM_CLIENTE,
+                deveAtualizarFluxoMensagem,
+            ]
         );
         const statusAtualizadoTicket = resultadoTicketAtualizado.rows[0]?.status ?? contexto.status;
 

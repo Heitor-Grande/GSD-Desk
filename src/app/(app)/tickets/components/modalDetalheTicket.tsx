@@ -47,6 +47,7 @@ type TicketDetalhadoApi = {
     fechado_em: string | null;
     fechado_por: number | null;
     fechado_por_nome: string | null;
+    usuario_logado_id?: number;
     usuario_pode_editar_informacoes_gerais?: boolean;
     usuario_pode_editar_responsavel?: boolean;
     usuario_pode_editar_status?: boolean;
@@ -96,6 +97,10 @@ type ModalDetalheTicketProps = {
 
 type AbaTicket = "informacoesGerais" | "chat";
 
+type ConfirmacaoAtualizacaoStatus = {
+    mensagem: string;
+};
+
 type EditorMensagemTicketProps = {
     id: string;
     value: string;
@@ -116,6 +121,7 @@ const TIPOS_ANEXO_PERMITIDOS = new Set([
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ]);
+const STATUS_TICKET_ENCERRADO = new Set(["encerrado_resolvido", "encerrado_nao_resolvido"]);
 
 const opcoesStatus: OpcaoSeletor[] = [
     { label: "Pendente vínculo agente", value: "pendente_vinculo_agente" },
@@ -292,6 +298,11 @@ export default function ModalDetalheTicket({
     const [novaMensagem, setNovaMensagem] = useState("");
     const [textoNovaMensagem, setTextoNovaMensagem] = useState("");
     const [anexosNovaMensagem, setAnexosNovaMensagem] = useState<File[]>([]);
+    const [idUsuarioLogado, setIdUsuarioLogado] = useState<number | null>(null);
+    const [idResponsavelTicket, setIdResponsavelTicket] = useState<number | null>(null);
+    const [idAgenteTicket, setIdAgenteTicket] = useState<number | null>(null);
+    const [statusTicketAtual, setStatusTicketAtual] = useState("");
+    const [confirmacaoAtualizacaoStatus, setConfirmacaoAtualizacaoStatus] = useState<ConfirmacaoAtualizacaoStatus | null>(null);
     const [baixandoAnexo, setBaixandoAnexo] = useState(false);
     const [podeEditarInformacoesGerais, setPodeEditarInformacoesGerais] = useState(false);
     const [podeEditarResponsavel, setPodeEditarResponsavel] = useState(false);
@@ -317,6 +328,11 @@ export default function ModalDetalheTicket({
         setNovaMensagem("");
         setTextoNovaMensagem("");
         setAnexosNovaMensagem([]);
+        setIdUsuarioLogado(null);
+        setIdResponsavelTicket(null);
+        setIdAgenteTicket(null);
+        setStatusTicketAtual("");
+        setConfirmacaoAtualizacaoStatus(null);
         setBaixandoAnexo(false);
         setPodeEditarInformacoesGerais(false);
         setPodeEditarResponsavel(false);
@@ -370,6 +386,10 @@ export default function ModalDetalheTicket({
             setPodeEditarStatus(Boolean(ticket.usuario_pode_editar_status));
             setPodeEditarAgente(Boolean(ticket.usuario_pode_editar_agente));
             setPodeEditarPrioridade(Boolean(ticket.usuario_pode_editar_prioridade));
+            setIdUsuarioLogado(ticket.usuario_logado_id ?? null);
+            setIdResponsavelTicket(ticket.responsavel_id);
+            setIdAgenteTicket(ticket.agente_id);
+            setStatusTicketAtual(ticket.status);
             setFormulario({
                 titulo: ticket.titulo,
                 empresa: criarOpcaoTexto(ticket.empresa_nome, ticket.empresa_id),
@@ -434,7 +454,38 @@ export default function ModalDetalheTicket({
         }
     }
 
-    async function enviarMensagem() {
+    function iniciarEnvioMensagem() {
+        if (!textoNovaMensagem) {
+            setMensagemResposta("Informe uma mensagem para enviar no chat.");
+            return;
+        }
+
+        const usuarioResponsavelTicket = Boolean(idUsuarioLogado && idUsuarioLogado === idResponsavelTicket);
+        const usuarioAgenteTicket = Boolean(idUsuarioLogado && idUsuarioLogado === idAgenteTicket);
+
+        if ((usuarioResponsavelTicket || usuarioAgenteTicket) && STATUS_TICKET_ENCERRADO.has(statusTicketAtual)) {
+            void enviarMensagem(true);
+            return;
+        }
+
+        if (usuarioResponsavelTicket) {
+            setConfirmacaoAtualizacaoStatus({
+                mensagem: "Deseja atualizar o ticket para o status de \"Com Agente\"?",
+            });
+            return;
+        }
+
+        if (usuarioAgenteTicket) {
+            setConfirmacaoAtualizacaoStatus({
+                mensagem: "Deseja atualizar o ticket para o status de \"Com Cliente\"?",
+            });
+            return;
+        }
+
+        void enviarMensagem(false);
+    }
+
+    async function enviarMensagem(atualizarStatusTicket: boolean) {
         if (!textoNovaMensagem) {
             setMensagemResposta("Informe uma mensagem para enviar no chat.");
             return;
@@ -449,6 +500,7 @@ export default function ModalDetalheTicket({
             formData.append("ticketId", String(idTicket));
             formData.append("empresaNavegacaoId", empresaNavegacaoId ?? "");
             formData.append("conteudo", novaMensagem);
+            formData.append("atualizarStatusTicket", String(atualizarStatusTicket));
             anexosNovaMensagem.forEach((anexo) => formData.append("anexos", anexo));
 
             const resposta = await requisitarAPI("/api/tickets/mensagens", {
@@ -616,7 +668,7 @@ export default function ModalDetalheTicket({
                                 </div>
 
                                 <div className="md:col-span-6">
-                                    <Seletor id="detalhe-ticket-status" label="Status" options={opcoesStatus} value={formulario.status} onChange={(opcao) => atualizarCampoFormulario("status", opcao)} placeholder="Selecione o status" isDisabled={carregando || !podeEditarStatus} isClearable={false} className="w-full" />
+                                    <Seletor id="detalhe-ticket-status" label="Status" options={opcoesStatus} value={formulario.status} onChange={(opcao) => atualizarCampoFormulario("status", opcao)} placeholder="Selecione o status" isDisabled={carregando || !podeEditarStatus || STATUS_TICKET_ENCERRADO.has(statusTicketAtual)} isClearable={false} className="w-full" />
                                 </div>
 
                                 <div className="md:col-span-6">
@@ -642,8 +694,8 @@ export default function ModalDetalheTicket({
                         )}
 
                         {abaAtiva === "chat" && (
-                            <div className="flex min-h-[22rem] flex-col rounded-lg border border-slate-200 bg-slate-50">
-                                <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                            <div className="flex h-[86vh] min-h-[42rem] max-h-[64rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                                     {mensagens.length === 0 && (
                                         <div className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
                                             Nenhuma mensagem registrada para este ticket.
@@ -651,7 +703,7 @@ export default function ModalDetalheTicket({
                                     )}
 
                                     {mensagens.map((mensagem) => (
-                                        <div key={mensagem.id} className="rounded-lg border border-slate-200 bg-white p-4">
+                                        <div key={mensagem.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
                                             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                                                 <strong className="text-slate-700">{mensagem.enviado_por_nome}</strong>
                                                 <span>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(mensagem.enviado_em))}</span>
@@ -679,11 +731,11 @@ export default function ModalDetalheTicket({
                                     ))}
                                 </div>
 
-                                <div className="border-t border-slate-200 bg-white p-4">
+                                <div className="shrink-0 border-t border-slate-200 bg-white p-3">
                                     <label className="block text-sm font-semibold text-slate-700" htmlFor="detalhe-ticket-chat-mensagem">
                                         Nova mensagem
                                     </label>
-                                    <div className="mt-1 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                                    <div className="mt-1 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 [&_.ql-editor]:max-h-24 [&_.ql-editor]:min-h-20 [&_.ql-editor]:overflow-y-auto [&_.ql-toolbar]:px-2 [&_.ql-toolbar]:py-1">
                                         <EditorMensagemTicket
                                             id="detalhe-ticket-chat-mensagem"
                                             value={novaMensagem}
@@ -694,7 +746,7 @@ export default function ModalDetalheTicket({
                                             }}
                                         />
                                     </div>
-                                    <div className="mt-3">
+                                    <div className="mt-2">
                                         <label className="block text-sm font-semibold text-slate-700" htmlFor="detalhe-ticket-chat-anexos">
                                             Anexos
                                         </label>
@@ -702,7 +754,7 @@ export default function ModalDetalheTicket({
                                             id="detalhe-ticket-chat-anexos"
                                             type="file"
                                             multiple
-                                            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                                            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700"
                                             onChange={selecionarAnexosNovaMensagem}
                                             disabled={carregando}
                                             accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -725,13 +777,13 @@ export default function ModalDetalheTicket({
                                             </div>
                                         )}
                                     </div>
-                                    <div className="mt-3 flex justify-end">
+                                    <div className="mt-2 flex justify-end">
                                         <Botao
                                             size="sm"
                                             label="Enviar mensagem"
                                             icon={<FaPaperPlane />}
                                             onClick={() => {
-                                                void enviarMensagem();
+                                                iniciarEnvioMensagem();
                                             }}
                                             disabled={carregando || !textoNovaMensagem}
                                             loading={carregando}
@@ -753,6 +805,47 @@ export default function ModalDetalheTicket({
             </Modal>
 
             <ModalCarregamento show={aberto && (carregando || baixandoAnexo)} text={baixandoAnexo ? "Baixando anexo..." : "Carregando dados do ticket..."} />
+
+            <Modal
+                show={aberto && Boolean(confirmacaoAtualizacaoStatus)}
+                onHide={() => setConfirmacaoAtualizacaoStatus(null)}
+                centered
+                size="sm"
+            >
+                <Modal.Body className="px-6 pt-6 text-center">
+                    <p className="mb-0 font-bold text-slate-800">
+                        {confirmacaoAtualizacaoStatus?.mensagem}
+                    </p>
+                </Modal.Body>
+                <Modal.Footer className="grid grid-cols-1 gap-2 border-0 px-6 pb-6 pt-4 sm:grid-cols-2">
+                    <Botao
+                        size="sm"
+                        label="Não"
+                        onClick={() => {
+                            setConfirmacaoAtualizacaoStatus(null);
+                            void enviarMensagem(false);
+                        }}
+                        disabled={carregando}
+                        loading={false}
+                        variant="outline-secondary"
+                        type="button"
+                        className="w-full"
+                    />
+                    <Botao
+                        size="sm"
+                        label="Sim"
+                        onClick={() => {
+                            setConfirmacaoAtualizacaoStatus(null);
+                            void enviarMensagem(true);
+                        }}
+                        disabled={carregando}
+                        loading={carregando}
+                        variant="primary"
+                        type="button"
+                        className="w-full"
+                    />
+                </Modal.Footer>
+            </Modal>
 
             <ModalResposta
                 isOpen={aberto && Boolean(mensagemResposta)}

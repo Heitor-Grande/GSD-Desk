@@ -3,7 +3,7 @@ import { consultarBancoDados } from "@/services/database";
 import { enviarEmail } from "@/services/email";
 import { normalizarCampoOpcional, validarEmail, validarStringComConteudo } from "@/utils/validacoes";
 import { criarHash } from "@/utils/criptografia";
-import { registrarAuditoriaSegura } from "@/utils/auditoria";
+import { obterEmpresaAuditoriaUsuario, registrarAuditoriaSegura } from "@/utils/auditoria";
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
@@ -379,6 +379,7 @@ export async function PUT(request: NextRequest) {
         const perfilId = normalizarPerfilId(body.perfilId);
         const ativo = typeof body.ativo === "boolean" ? body.ativo : null;
         const isAdmin = typeof body.isAdmin === "boolean" ? body.isAdmin : null;
+        const empresaAuditoriaId = normalizarIdEmpresaNavegacao(body.empresaNavegacaoId);
 
         if (!Number.isInteger(id) || id <= 0) {
             return criarRespostaApi(false, "Informe um usuário válido para atualização.", null, 400);
@@ -466,6 +467,9 @@ export async function PUT(request: NextRequest) {
         await registrarAuditoriaSegura({
             acao: "UPDATE",
             usuarioId: idUsuarioAtualizacao,
+            empresaId: Number.isInteger(empresaAuditoriaId) && empresaAuditoriaId > 0
+                ? empresaAuditoriaId
+                : await obterEmpresaAuditoriaUsuario(idUsuarioAtualizacao),
             metodo: request.method,
             rota: request.nextUrl.pathname,
             dadosAntes: resultadoUsuarioAntes.rows[0],
@@ -566,6 +570,7 @@ export async function DELETE(request: NextRequest) {
         await registrarAuditoriaSegura({
             acao: "DELETE",
             usuarioId: idUsuarioExclusao,
+            empresaId: await obterEmpresaAuditoriaUsuario(idUsuarioExclusao),
             metodo: request.method,
             rota: request.nextUrl.pathname,
             dadosAntes: usuarioAntes,

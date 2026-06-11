@@ -32,6 +32,14 @@ const rotulosStatus: Record<string, string> = {
     encerrado_nao_resolvido: "Encerrado não resolvido",
 };
 
+const classesStatus: Record<string, string> = {
+    pendente_vinculo_agente: "border-[#dc3545]/30 bg-[#dc3545]/10 text-[#dc3545]",
+    com_agente: "border-[#fd7e14]/30 bg-[#fd7e14]/10 text-[#fd7e14]",
+    com_cliente: "border-[#ffc107]/40 bg-[#ffc107]/15 text-[#8a6500]",
+    encerrado_resolvido: "border-[#198754]/30 bg-[#198754]/10 text-[#198754]",
+    encerrado_nao_resolvido: "border-[#dc3545]/30 bg-[#dc3545]/10 text-[#dc3545]",
+};
+
 const rotulosPrioridade: Record<string, string> = {
     baixa: "Baixa",
     media: "Média",
@@ -77,7 +85,7 @@ export default function PaginaTickets() {
             chave: "status",
             titulo: "Status",
             renderizar: (ticket) => (
-                <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${classesStatus[ticket.status] || "border-slate-200 bg-slate-100 text-slate-700"}`}>
                     {rotulosStatus[ticket.status] || ticket.status}
                 </span>
             ),
