@@ -6,7 +6,7 @@ import { Seletor } from "@/components/inputs/select";
 import { ModalCarregamento } from "@/components/modals/loading";
 import ModalResposta from "@/components/modals/responseModal";
 import { requisitarAPI } from "@/utils/api";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "react-bootstrap";
 import { FaSave, FaTimes } from "react-icons/fa";
 
@@ -114,6 +114,18 @@ function criarEstadoInicialTicket(): DadosFormularioTicket {
 }
 
 const CHAVE_EMPRESA_NAVEGACAO = "empresaNavegacaoId";
+const TAMANHO_MAXIMO_ANEXO = 10 * 1024 * 1024;
+const TIPOS_ANEXO_PERMITIDOS = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "application/pdf",
+    "text/plain",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
 
 function criarOpcaoUsuario(usuario: UsuarioFormularioApi | UsuarioAutenticadoApi): OpcaoSeletor {
     return {
@@ -236,6 +248,7 @@ export default function ModalCadastroTicket({
     const [mensagemResposta, setMensagemResposta] = useState("");
     const [ticketCriadoComSucesso, setTicketCriadoComSucesso] = useState(false);
     const [abaAtiva, setAbaAtiva] = useState<AbaTicket>("informacoesGerais");
+    const [anexosMensagemInicial, setAnexosMensagemInicial] = useState<File[]>([]);
 
     function atualizarCampoFormulario(campo: keyof DadosFormularioTicket, valor: string | OpcaoSeletor | null) {
         setFormulario((estadoAtual) => ({
@@ -255,6 +268,7 @@ export default function ModalCadastroTicket({
         setTicketCriadoComSucesso(false);
         setCarregando(false);
         setAbaAtiva("informacoesGerais");
+        setAnexosMensagemInicial([]);
     }
 
     function obterClassesAba(aba: AbaTicket): string {
@@ -403,15 +417,18 @@ export default function ModalCadastroTicket({
         setMensagemResposta("");
 
         try {
+            const formData = new FormData();
+            formData.append("titulo", titulo);
+            formData.append("empresaId", formulario.empresa.value);
+            formData.append("produtoId", formulario.produto.value);
+            formData.append("responsavelId", formulario.responsavel.value);
+            formData.append("prioridade", formulario.prioridade?.value ?? "");
+            formData.append("mensagemInicial", formulario.mensagemInicial);
+            anexosMensagemInicial.forEach((anexo) => formData.append("anexos", anexo));
+
             const resposta = await requisitarAPI("/api/tickets", {
                 method: "POST",
-                body: {
-                    titulo: titulo,
-                    empresaId: formulario.empresa.value,
-                    produtoId: formulario.produto.value,
-                    responsavelId: formulario.responsavel.value,
-                    mensagemInicial: formulario.mensagemInicial,
-                },
+                body: formData,
             });
 
             setTicketCriadoComSucesso(true);
@@ -425,6 +442,37 @@ export default function ModalCadastroTicket({
         } finally {
             setCarregando(false);
         }
+    }
+
+    function selecionarAnexosMensagemInicial(event: ChangeEvent<HTMLInputElement>) {
+        const arquivos = Array.from(event.target.files ?? []);
+
+        if (arquivos.length === 0) {
+            return;
+        }
+
+        const arquivoInvalido = arquivos.find((arquivo) => arquivo.size > TAMANHO_MAXIMO_ANEXO);
+
+        if (arquivoInvalido) {
+            setMensagemResposta(`O arquivo ${arquivoInvalido.name} excede o limite de 10 MB.`);
+            event.target.value = "";
+            return;
+        }
+
+        const tipoInvalido = arquivos.find((arquivo) => !TIPOS_ANEXO_PERMITIDOS.has(arquivo.type));
+
+        if (tipoInvalido) {
+            setMensagemResposta(`O tipo do arquivo ${tipoInvalido.name} não é permitido.`);
+            event.target.value = "";
+            return;
+        }
+
+        setAnexosMensagemInicial((estadoAtual) => [...estadoAtual, ...arquivos]);
+        event.target.value = "";
+    }
+
+    function removerAnexoMensagemInicial(indiceAnexo: number) {
+        setAnexosMensagemInicial((estadoAtual) => estadoAtual.filter((_, indice) => indice !== indiceAnexo));
     }
 
     useEffect(() => {
@@ -674,6 +722,37 @@ export default function ModalCadastroTicket({
                                                 }));
                                             }}
                                         />
+                                    </div>
+                                    <div className="mt-3">
+                                        <label className="block text-sm font-semibold text-slate-700" htmlFor="ticket-chat-anexos">
+                                            Anexos
+                                        </label>
+                                        <input
+                                            id="ticket-chat-anexos"
+                                            type="file"
+                                            multiple
+                                            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                                            onChange={selecionarAnexosMensagemInicial}
+                                            disabled={carregando}
+                                            accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                        />
+                                        {anexosMensagemInicial.length > 0 && (
+                                            <div className="mt-2 space-y-2">
+                                                {anexosMensagemInicial.map((anexo, indice) => (
+                                                    <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                        <span className="truncate">{anexo.name}</span>
+                                                        <button
+                                                            type="button"
+                                                            className="font-semibold text-red-600 hover:text-red-700"
+                                                            onClick={() => removerAnexoMensagemInicial(indice)}
+                                                            disabled={carregando}
+                                                        >
+                                                            Remover
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

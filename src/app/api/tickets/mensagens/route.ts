@@ -10,12 +10,6 @@ import { normalizarNomePerfil, STATUS_INICIAL_TICKET, usuarioPodeVisualizarTicke
 import { validarStringComConteudo } from "@/utils/validacoes";
 import type { PoolClient } from "pg";
 
-type CorpoCriacaoMensagemTicket = {
-    ticketId?: unknown;
-    empresaNavegacaoId?: unknown;
-    conteudo?: unknown;
-};
-
 type TicketMensagemContexto = {
     empresa_id: number;
     titulo: string;
@@ -32,7 +26,23 @@ type TicketMensagemAtualizado = {
     status: string;
 };
 
+type ResultadoMensagemId = {
+    id: number;
+};
+
 const STATUS_COM_AGENTE = "com_agente";
+const TAMANHO_MAXIMO_ANEXO = 10 * 1024 * 1024;
+const TIPOS_ANEXO_PERMITIDOS = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "application/pdf",
+    "text/plain",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
 
 const rotulosStatus: Record<string, string> = {
     pendente_vinculo_agente: "Pendente vínculo agente",
@@ -67,9 +77,71 @@ function escaparHtml(valor: string): string {
         .replace(/'/g, "&#039;");
 }
 
-/**
- * Monta o HTML enviado ao responsável quando um agente adiciona mensagem ao ticket.
- */
+function obterExtensaoArquivo(nomeOriginal: string): string | null {
+    const partesNome = nomeOriginal.split(".");
+    const extensao = partesNome.length > 1 ? partesNome.pop()?.trim().toLowerCase() : "";
+
+    return extensao ? extensao.slice(0, 20) : null;
+}
+
+function validarAnexos(anexos: File[]): string | null {
+    for (const anexo of anexos) {
+        if (anexo.size > TAMANHO_MAXIMO_ANEXO) {
+            return `O arquivo ${anexo.name} excede o limite de 10 MB.`;
+        }
+
+        if (!TIPOS_ANEXO_PERMITIDOS.has(anexo.type)) {
+            return `O tipo do arquivo ${anexo.name} não é permitido.`;
+        }
+    }
+
+    return null;
+}
+
+async function inserirAnexosMensagem({
+    cliente,
+    ticketId,
+    mensagemId,
+    anexos,
+    idUsuario,
+}: {
+    cliente: PoolClient;
+    ticketId: number;
+    mensagemId: number;
+    anexos: File[];
+    idUsuario: number;
+}) {
+    for (const anexo of anexos) {
+        const arrayBuffer = await anexo.arrayBuffer();
+
+        await cliente.query(
+            `
+                insert into ticket_mensagens_anexos (
+                    ticket_id,
+                    mensagem_id,
+                    nome_original,
+                    mime_type,
+                    extensao,
+                    tamanho_bytes,
+                    arquivo,
+                    criado_por
+                )
+                values ($1, $2, $3, $4, $5, $6, $7, $8)
+            `,
+            [
+                ticketId,
+                mensagemId,
+                anexo.name.slice(0, 255),
+                anexo.type,
+                obterExtensaoArquivo(anexo.name),
+                anexo.size,
+                Buffer.from(arrayBuffer),
+                idUsuario,
+            ]
+        );
+    }
+}
+
 function montarHtmlNovaMensagemTicket({
     titulo,
     status,
@@ -116,7 +188,7 @@ function montarHtmlNovaMensagemTicket({
 
 /**
  * Endpoint POST de mensagens de ticket.
- * Adiciona uma nova mensagem no chat e atualiza a data de última alteração do ticket.
+ * Adiciona uma nova mensagem e seus anexos opcionais na mesma transação.
  */
 export async function POST(request: NextRequest) {
     let cliente: PoolClient | null = null;
@@ -139,11 +211,12 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
-        const body = await request.json() as CorpoCriacaoMensagemTicket;
-        const ticketId = normalizarId(body.ticketId);
-        const empresaNavegacaoId = normalizarId(body.empresaNavegacaoId);
-        const conteudo = validarStringComConteudo(body.conteudo) ? body.conteudo.trim() : "";
+        const formData = await request.formData();
+        const ticketId = normalizarId(formData.get("ticketId"));
+        const empresaNavegacaoId = normalizarId(formData.get("empresaNavegacaoId"));
+        const conteudo = validarStringComConteudo(formData.get("conteudo")) ? String(formData.get("conteudo")).trim() : "";
         const textoMensagem = obterTextoMensagem(conteudo);
+        const anexos = formData.getAll("anexos").filter((valor): valor is File => valor instanceof File);
 
         if (!ticketId || !empresaNavegacaoId) {
             return criarRespostaApi(false, "Informe ticket e empresa de navegação válidos.", null, 400);
@@ -155,6 +228,12 @@ export async function POST(request: NextRequest) {
 
         if (conteudo.length > 20000) {
             return criarRespostaApi(false, "A mensagem deve ter no máximo 20.000 caracteres.", null, 400);
+        }
+
+        const erroAnexos = validarAnexos(anexos);
+
+        if (erroAnexos) {
+            return criarRespostaApi(false, erroAnexos, null, 400);
         }
 
         const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
@@ -206,7 +285,7 @@ export async function POST(request: NextRequest) {
         await cliente.query("begin");
         transacaoAberta = true;
 
-        await cliente.query(
+        const resultadoMensagem = await cliente.query<ResultadoMensagemId>(
             `
                 insert into ticket_mensagens (
                     ticket_id,
@@ -214,9 +293,23 @@ export async function POST(request: NextRequest) {
                     enviado_por
                 )
                 values ($1, $2, $3)
+                returning id
             `,
             [ticketId, conteudo, idUsuario]
         );
+        const mensagemId = resultadoMensagem.rows[0]?.id;
+
+        if (!mensagemId) {
+            throw new Error("Mensagem não retornada após o cadastro.");
+        }
+
+        await inserirAnexosMensagem({
+            cliente,
+            ticketId,
+            mensagemId,
+            anexos,
+            idUsuario,
+        });
 
         const resultadoTicketAtualizado = await cliente.query<TicketMensagemAtualizado>(
             `

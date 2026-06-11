@@ -10,15 +10,6 @@ import { STATUS_INICIAL_TICKET, usuarioPodeVisualizarTicket } from "@/utils/tick
 import { validarStringComConteudo } from "@/utils/validacoes";
 import type { PoolClient } from "pg";
 
-type CorpoCadastroTicket = {
-    titulo?: unknown;
-    empresaId?: unknown;
-    produtoId?: unknown;
-    responsavelId?: unknown;
-    prioridade?: unknown;
-    mensagemInicial?: unknown;
-};
-
 type CorpoAtualizacaoTicket = {
     id?: unknown;
     empresaNavegacaoId?: unknown;
@@ -30,6 +21,10 @@ type CorpoAtualizacaoTicket = {
 };
 
 type ResultadoId = {
+    id: number;
+};
+
+type ResultadoMensagemId = {
     id: number;
 };
 
@@ -67,6 +62,8 @@ type TicketDetalhado = TicketListado & {
     fechado_por: number | null;
     fechado_por_nome: string | null;
     usuario_pode_editar_informacoes_gerais?: boolean;
+    usuario_pode_editar_responsavel?: boolean;
+    usuario_pode_editar_status?: boolean;
     usuario_pode_editar_agente?: boolean;
     usuario_pode_editar_prioridade?: boolean;
 };
@@ -93,6 +90,13 @@ type MensagemTicketDetalhe = {
     enviado_por: number;
     enviado_por_nome: string;
     enviado_em: Date;
+    anexos?: AnexoMensagemTicketDetalhe[];
+};
+
+type AnexoMensagemTicketDetalhe = {
+    id: number;
+    mensagem_id: number;
+    nome_original: string;
 };
 
 type ContextoListagemTicket = {
@@ -107,6 +111,18 @@ const statusPermitidos = [
     "encerrado_resolvido",
     "encerrado_nao_resolvido",
 ];
+const TAMANHO_MAXIMO_ANEXO = 10 * 1024 * 1024;
+const TIPOS_ANEXO_PERMITIDOS = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "application/pdf",
+    "text/plain",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
 
 function normalizarId(valor: unknown): number | null {
     const id = Number(valor);
@@ -142,6 +158,71 @@ function escaparHtml(valor: string): string {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+function obterExtensaoArquivo(nomeOriginal: string): string | null {
+    const partesNome = nomeOriginal.split(".");
+    const extensao = partesNome.length > 1 ? partesNome.pop()?.trim().toLowerCase() : "";
+
+    return extensao ? extensao.slice(0, 20) : null;
+}
+
+function validarAnexos(anexos: File[]): string | null {
+    for (const anexo of anexos) {
+        if (anexo.size > TAMANHO_MAXIMO_ANEXO) {
+            return `O arquivo ${anexo.name} excede o limite de 10 MB.`;
+        }
+
+        if (!TIPOS_ANEXO_PERMITIDOS.has(anexo.type)) {
+            return `O tipo do arquivo ${anexo.name} não é permitido.`;
+        }
+    }
+
+    return null;
+}
+
+async function inserirAnexosMensagem({
+    cliente,
+    ticketId,
+    mensagemId,
+    anexos,
+    idUsuario,
+}: {
+    cliente: PoolClient;
+    ticketId: number;
+    mensagemId: number;
+    anexos: File[];
+    idUsuario: number;
+}) {
+    for (const anexo of anexos) {
+        const arrayBuffer = await anexo.arrayBuffer();
+
+        await cliente.query(
+            `
+                insert into ticket_mensagens_anexos (
+                    ticket_id,
+                    mensagem_id,
+                    nome_original,
+                    mime_type,
+                    extensao,
+                    tamanho_bytes,
+                    arquivo,
+                    criado_por
+                )
+                values ($1, $2, $3, $4, $5, $6, $7, $8)
+            `,
+            [
+                ticketId,
+                mensagemId,
+                anexo.name.slice(0, 255),
+                anexo.type,
+                obterExtensaoArquivo(anexo.name),
+                anexo.size,
+                Buffer.from(arrayBuffer),
+                idUsuario,
+            ]
+        );
+    }
 }
 
 /**
@@ -293,6 +374,14 @@ export async function GET(request: NextRequest) {
                         t.fechado_por,
                         fechado_por.nome as fechado_por_nome,
                         t.responsavel_id <> $3 as usuario_pode_editar_informacoes_gerais,
+                        (
+                            t.responsavel_id <> $3
+                            and lower(coalesce(perfil_usuario_logado.nome, '')) <> 'agente de suporte'
+                        ) as usuario_pode_editar_responsavel,
+                        (
+                            t.responsavel_id <> $3
+                            or lower(coalesce(perfil_usuario_logado.nome, '')) = 'cliente'
+                        ) as usuario_pode_editar_status,
                         lower(coalesce(perfil_usuario_logado.nome, '')) = 'agente de suporte' as usuario_pode_editar_agente,
                         t.agente_id = $3 as usuario_pode_editar_prioridade
                     from tickets t
@@ -336,13 +425,35 @@ export async function GET(request: NextRequest) {
                 `,
                 [ticketIdDetalhe]
             );
+            const resultadoAnexos = await consultarBancoDados<AnexoMensagemTicketDetalhe>(
+                `
+                    select
+                        id,
+                        mensagem_id,
+                        nome_original
+                    from ticket_mensagens_anexos
+                    where ticket_id = $1
+                    order by criado_em asc, id asc
+                `,
+                [ticketIdDetalhe]
+            );
+            const anexosPorMensagem = resultadoAnexos.rows.reduce<Record<number, AnexoMensagemTicketDetalhe[]>>((acumulador, anexo) => {
+                acumulador[anexo.mensagem_id] = acumulador[anexo.mensagem_id] ?? [];
+                acumulador[anexo.mensagem_id].push(anexo);
+
+                return acumulador;
+            }, {});
+            const mensagensComAnexos = resultadoMensagens.rows.map((mensagem) => ({
+                ...mensagem,
+                anexos: anexosPorMensagem[mensagem.id] ?? [],
+            }));
 
             return criarRespostaApi(
                 true,
                 "Ticket carregado com sucesso.",
                 {
                     ticket: ticket,
-                    mensagens: resultadoMensagens.rows,
+                    mensagens: mensagensComAnexos,
                 }
             );
         }
@@ -451,7 +562,12 @@ export async function PUT(request: NextRequest) {
         // 4. Valida se o ticket pertence à empresa e se responsáveis/agentes são coerentes com seus perfis.
         const resultadoValidacao = await consultarBancoDados<{
             ticket_existe: boolean;
+            titulo_atual: string | null;
+            responsavel_atual_id: number | null;
             usuario_pode_editar_informacoes_gerais: boolean;
+            usuario_pode_editar_responsavel: boolean;
+            status_atual: string | null;
+            usuario_pode_editar_status: boolean;
             agente_atual_id: number | null;
             usuario_pode_editar_agente: boolean;
             prioridade_atual: string | null;
@@ -467,6 +583,20 @@ export async function PUT(request: NextRequest) {
                         where t.id = $1
                             and t.empresa_id = $2
                     ) as ticket_existe,
+                    (
+                        select t.titulo
+                        from tickets t
+                        where t.id = $1
+                            and t.empresa_id = $2
+                        limit 1
+                    ) as titulo_atual,
+                    (
+                        select t.responsavel_id
+                        from tickets t
+                        where t.id = $1
+                            and t.empresa_id = $2
+                        limit 1
+                    ) as responsavel_atual_id,
                     exists (
                         select 1
                         from tickets t
@@ -474,6 +604,47 @@ export async function PUT(request: NextRequest) {
                             and t.empresa_id = $2
                             and t.responsavel_id <> $5
                     ) as usuario_pode_editar_informacoes_gerais,
+                    (
+                        exists (
+                            select 1
+                            from tickets t
+                            where t.id = $1
+                                and t.empresa_id = $2
+                                and t.responsavel_id <> $5
+                        )
+                        and exists (
+                            select 1
+                            from usuarios u
+                            left join perfil p on p.id = u.perfil_id
+                            where u.id = $5
+                                and u.ativo = true
+                                and lower(coalesce(p.nome, '')) <> 'agente de suporte'
+                        )
+                    ) as usuario_pode_editar_responsavel,
+                    (
+                        select t.status
+                        from tickets t
+                        where t.id = $1
+                            and t.empresa_id = $2
+                        limit 1
+                    ) as status_atual,
+                    (
+                        exists (
+                            select 1
+                            from tickets t
+                            where t.id = $1
+                                and t.empresa_id = $2
+                                and t.responsavel_id <> $5
+                        )
+                        or exists (
+                            select 1
+                            from usuarios u
+                            left join perfil p on p.id = u.perfil_id
+                            where u.id = $5
+                                and u.ativo = true
+                                and lower(coalesce(p.nome, '')) = 'cliente'
+                        )
+                    ) as usuario_pode_editar_status,
                     (
                         select t.agente_id
                         from tickets t
@@ -535,8 +706,22 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Ticket não encontrado para a empresa selecionada.", null, 404);
         }
 
-        if (!validacao.usuario_pode_editar_informacoes_gerais) {
+        const tituloAlterado = titulo !== (validacao.titulo_atual ?? "");
+        const responsavelAlterado = responsavelId !== validacao.responsavel_atual_id;
+        const agenteAlterado = agenteId !== validacao.agente_atual_id;
+        const statusAlterado = status !== (validacao.status_atual ?? "");
+        const prioridadeAlterada = prioridade !== (validacao.prioridade_atual ?? "");
+
+        if (!validacao.usuario_pode_editar_informacoes_gerais && (tituloAlterado || responsavelAlterado || agenteAlterado || prioridadeAlterada)) {
             return criarRespostaApi(false, "O responsável pelo ticket não pode editar as informações gerais após a criação.", null, 403);
+        }
+
+        if (responsavelAlterado && !validacao.usuario_pode_editar_responsavel) {
+            return criarRespostaApi(false, "Agente de Suporte não pode alterar o responsável do ticket.", null, 403);
+        }
+
+        if (statusAlterado && !validacao.usuario_pode_editar_status) {
+            return criarRespostaApi(false, "Você não possui permissão para alterar o status do ticket.", null, 403);
         }
 
         if (!validacao.responsavel_valido) {
@@ -547,11 +732,11 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "O agente deve ser um Agente de Suporte ativo vinculado à empresa.", null, 400);
         }
 
-        if (agenteId !== validacao.agente_atual_id && !validacao.usuario_pode_editar_agente) {
+        if (agenteAlterado && !validacao.usuario_pode_editar_agente) {
             return criarRespostaApi(false, "Apenas um Agente de Suporte pode alterar o agente responsável pelo ticket.", null, 403);
         }
 
-        if (!validacao.usuario_pode_editar_prioridade && prioridade !== validacao.prioridade_atual) {
+        if (!validacao.usuario_pode_editar_prioridade && prioridadeAlterada) {
             return criarRespostaApi(false, "Apenas o agente responsável pelo ticket pode alterar a prioridade.", null, 403);
         }
 
@@ -666,13 +851,14 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
-        const body = await request.json() as CorpoCadastroTicket;
-        const titulo = validarStringComConteudo(body.titulo) ? body.titulo.trim() : "";
-        const empresaId = normalizarId(body.empresaId);
-        const produtoId = normalizarId(body.produtoId);
-        const responsavelId = normalizarId(body.responsavelId);
-        const prioridade = validarStringComConteudo(body.prioridade) ? body.prioridade.trim() : "";
-        const mensagemInicial = validarStringComConteudo(body.mensagemInicial) ? body.mensagemInicial.trim() : "";
+        const formData = await request.formData();
+        const titulo = validarStringComConteudo(formData.get("titulo")) ? String(formData.get("titulo")).trim() : "";
+        const empresaId = normalizarId(formData.get("empresaId"));
+        const produtoId = normalizarId(formData.get("produtoId"));
+        const responsavelId = normalizarId(formData.get("responsavelId"));
+        const prioridade = validarStringComConteudo(formData.get("prioridade")) ? String(formData.get("prioridade")).trim() : "";
+        const mensagemInicial = validarStringComConteudo(formData.get("mensagemInicial")) ? String(formData.get("mensagemInicial")).trim() : "";
+        const anexos = formData.getAll("anexos").filter((valor): valor is File => valor instanceof File);
         const textoMensagemInicial = obterTextoMensagem(mensagemInicial);
 
         if (titulo.length < 5 || titulo.length > 50) {
@@ -686,6 +872,12 @@ export async function POST(request: NextRequest) {
 
         if (!textoMensagemInicial) {
             return criarRespostaApi(false, "Informe a mensagem inicial para abrir o ticket.", null, 400);
+        }
+
+        const erroAnexos = validarAnexos(anexos);
+
+        if (erroAnexos) {
+            return criarRespostaApi(false, erroAnexos, null, 400);
         }
 
         const empresaPertenceAoUsuario = await verificarEmpresaPertenceAoUsuario({
@@ -825,7 +1017,7 @@ export async function POST(request: NextRequest) {
             throw new Error("Ticket não retornado após o cadastro.");
         }
 
-        await cliente.query(
+        const resultadoMensagem = await cliente.query<ResultadoMensagemId>(
             `
                 insert into ticket_mensagens (
                     ticket_id,
@@ -833,9 +1025,23 @@ export async function POST(request: NextRequest) {
                     enviado_por
                 )
                 values ($1, $2, $3)
+                returning id
             `,
             [ticketId, mensagemInicial, idUsuario]
         );
+        const mensagemId = resultadoMensagem.rows[0]?.id;
+
+        if (!mensagemId) {
+            throw new Error("Mensagem inicial não retornada após o cadastro.");
+        }
+
+        await inserirAnexosMensagem({
+            cliente,
+            ticketId,
+            mensagemId,
+            anexos,
+            idUsuario,
+        });
 
         await cliente.query("commit");
         transacaoAberta = false;

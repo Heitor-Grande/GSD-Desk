@@ -6,7 +6,7 @@ import { Seletor } from "@/components/inputs/select";
 import { ModalCarregamento } from "@/components/modals/loading";
 import ModalResposta from "@/components/modals/responseModal";
 import { requisitarAPI } from "@/utils/api";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "react-bootstrap";
 import { FaPaperPlane, FaSave, FaTimes } from "react-icons/fa";
 
@@ -48,6 +48,8 @@ type TicketDetalhadoApi = {
     fechado_por: number | null;
     fechado_por_nome: string | null;
     usuario_pode_editar_informacoes_gerais?: boolean;
+    usuario_pode_editar_responsavel?: boolean;
+    usuario_pode_editar_status?: boolean;
     usuario_pode_editar_agente?: boolean;
     usuario_pode_editar_prioridade?: boolean;
 };
@@ -58,6 +60,12 @@ type MensagemTicketApi = {
     enviado_por: number;
     enviado_por_nome: string;
     enviado_em: string;
+    anexos?: AnexoMensagemTicketApi[];
+};
+
+type AnexoMensagemTicketApi = {
+    id: number;
+    nome_original: string;
 };
 
 type DadosDetalheTicketApi = {
@@ -96,6 +104,18 @@ type EditorMensagemTicketProps = {
 };
 
 const CHAVE_EMPRESA_NAVEGACAO = "empresaNavegacaoId";
+const TAMANHO_MAXIMO_ANEXO = 10 * 1024 * 1024;
+const TIPOS_ANEXO_PERMITIDOS = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "application/pdf",
+    "text/plain",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
 
 const opcoesStatus: OpcaoSeletor[] = [
     { label: "Pendente vínculo agente", value: "pendente_vinculo_agente" },
@@ -162,6 +182,12 @@ function sanitizarHtmlMensagem(html: string): string {
         .replace(/\son\w+="[^"]*"/gi, "")
         .replace(/\son\w+='[^']*'/gi, "")
         .replace(/javascript:/gi, "");
+}
+
+function limitarNomeAnexo(nomeOriginal: string): string {
+    return nomeOriginal.length > 15
+        ? `${nomeOriginal.slice(0, 15)}...`
+        : nomeOriginal;
 }
 
 /**
@@ -265,7 +291,11 @@ export default function ModalDetalheTicket({
     const [abaAtiva, setAbaAtiva] = useState<AbaTicket>("informacoesGerais");
     const [novaMensagem, setNovaMensagem] = useState("");
     const [textoNovaMensagem, setTextoNovaMensagem] = useState("");
+    const [anexosNovaMensagem, setAnexosNovaMensagem] = useState<File[]>([]);
+    const [baixandoAnexo, setBaixandoAnexo] = useState(false);
     const [podeEditarInformacoesGerais, setPodeEditarInformacoesGerais] = useState(false);
+    const [podeEditarResponsavel, setPodeEditarResponsavel] = useState(false);
+    const [podeEditarStatus, setPodeEditarStatus] = useState(false);
     const [podeEditarAgente, setPodeEditarAgente] = useState(false);
     const [podeEditarPrioridade, setPodeEditarPrioridade] = useState(false);
 
@@ -286,7 +316,11 @@ export default function ModalDetalheTicket({
         setAbaAtiva("informacoesGerais");
         setNovaMensagem("");
         setTextoNovaMensagem("");
+        setAnexosNovaMensagem([]);
+        setBaixandoAnexo(false);
         setPodeEditarInformacoesGerais(false);
+        setPodeEditarResponsavel(false);
+        setPodeEditarStatus(false);
         setPodeEditarAgente(false);
         setPodeEditarPrioridade(false);
     }
@@ -332,6 +366,8 @@ export default function ModalDetalheTicket({
             setOpcoesAgente((dadosFormulario?.agentesSuporte ?? []).map(criarOpcaoUsuario));
             setMensagens(dados.mensagens ?? []);
             setPodeEditarInformacoesGerais(Boolean(ticket.usuario_pode_editar_informacoes_gerais));
+            setPodeEditarResponsavel(Boolean(ticket.usuario_pode_editar_responsavel));
+            setPodeEditarStatus(Boolean(ticket.usuario_pode_editar_status));
             setPodeEditarAgente(Boolean(ticket.usuario_pode_editar_agente));
             setPodeEditarPrioridade(Boolean(ticket.usuario_pode_editar_prioridade));
             setFormulario({
@@ -409,17 +445,20 @@ export default function ModalDetalheTicket({
 
         try {
             const empresaNavegacaoId = localStorage.getItem(CHAVE_EMPRESA_NAVEGACAO);
+            const formData = new FormData();
+            formData.append("ticketId", String(idTicket));
+            formData.append("empresaNavegacaoId", empresaNavegacaoId ?? "");
+            formData.append("conteudo", novaMensagem);
+            anexosNovaMensagem.forEach((anexo) => formData.append("anexos", anexo));
+
             const resposta = await requisitarAPI("/api/tickets/mensagens", {
                 method: "POST",
-                body: {
-                    ticketId: idTicket,
-                    empresaNavegacaoId: empresaNavegacaoId,
-                    conteudo: novaMensagem,
-                },
+                body: formData,
             });
 
             setNovaMensagem("");
             setTextoNovaMensagem("");
+            setAnexosNovaMensagem([]);
             await carregarTicket();
             setAbaAtiva("chat");
             setMensagemResposta(resposta.msg || "Mensagem enviada com sucesso.");
@@ -431,6 +470,69 @@ export default function ModalDetalheTicket({
             setMensagemResposta(mensagemErro);
         } finally {
             setCarregando(false);
+        }
+    }
+
+    function selecionarAnexosNovaMensagem(event: ChangeEvent<HTMLInputElement>) {
+        const arquivos = Array.from(event.target.files ?? []);
+
+        if (arquivos.length === 0) {
+            return;
+        }
+
+        const arquivoInvalido = arquivos.find((arquivo) => arquivo.size > TAMANHO_MAXIMO_ANEXO);
+
+        if (arquivoInvalido) {
+            setMensagemResposta(`O arquivo ${arquivoInvalido.name} excede o limite de 10 MB.`);
+            event.target.value = "";
+            return;
+        }
+
+        const tipoInvalido = arquivos.find((arquivo) => !TIPOS_ANEXO_PERMITIDOS.has(arquivo.type));
+
+        if (tipoInvalido) {
+            setMensagemResposta(`O tipo do arquivo ${tipoInvalido.name} não é permitido.`);
+            event.target.value = "";
+            return;
+        }
+
+        setAnexosNovaMensagem((estadoAtual) => [...estadoAtual, ...arquivos]);
+        event.target.value = "";
+    }
+
+    function removerAnexoNovaMensagem(indiceAnexo: number) {
+        setAnexosNovaMensagem((estadoAtual) => estadoAtual.filter((_, indice) => indice !== indiceAnexo));
+    }
+
+    async function baixarAnexo(anexo: AnexoMensagemTicketApi) {
+        setBaixandoAnexo(true);
+        setMensagemResposta("");
+
+        try {
+            const resposta = await fetch(`/api/tickets/anexos?id=${anexo.id}`);
+
+            if (!resposta.ok) {
+                const dados = await resposta.json().catch(() => null) as { msg?: string } | null;
+                throw new Error(dados?.msg || "Não foi possível baixar o anexo.");
+            }
+
+            const arquivo = await resposta.blob();
+            const urlArquivo = URL.createObjectURL(arquivo);
+            const linkDownload = document.createElement("a");
+            linkDownload.href = urlArquivo;
+            linkDownload.download = anexo.nome_original;
+            document.body.appendChild(linkDownload);
+            linkDownload.click();
+            linkDownload.remove();
+            URL.revokeObjectURL(urlArquivo);
+        } catch (erro) {
+            const mensagemErro = erro instanceof Error
+                ? erro.message
+                : "Não foi possível baixar o anexo.";
+
+            setMensagemResposta(mensagemErro);
+        } finally {
+            setBaixandoAnexo(false);
         }
     }
 
@@ -506,7 +608,7 @@ export default function ModalDetalheTicket({
                                 </div>
 
                                 <div className="md:col-span-6">
-                                    <Seletor id="detalhe-ticket-responsavel" label="Responsável" options={opcoesResponsavel} value={formulario.responsavel} onChange={(opcao) => atualizarCampoFormulario("responsavel", opcao)} placeholder="Selecione o responsável" isDisabled={carregando || !podeEditarInformacoesGerais} isClearable={false} className="w-full" />
+                                    <Seletor id="detalhe-ticket-responsavel" label="Responsável" options={opcoesResponsavel} value={formulario.responsavel} onChange={(opcao) => atualizarCampoFormulario("responsavel", opcao)} placeholder="Selecione o responsável" isDisabled={carregando || !podeEditarResponsavel} isClearable={false} className="w-full" />
                                 </div>
 
                                 <div className="md:col-span-6">
@@ -514,7 +616,7 @@ export default function ModalDetalheTicket({
                                 </div>
 
                                 <div className="md:col-span-6">
-                                    <Seletor id="detalhe-ticket-status" label="Status" options={opcoesStatus} value={formulario.status} onChange={(opcao) => atualizarCampoFormulario("status", opcao)} placeholder="Selecione o status" isDisabled={carregando || !podeEditarInformacoesGerais} isClearable={false} className="w-full" />
+                                    <Seletor id="detalhe-ticket-status" label="Status" options={opcoesStatus} value={formulario.status} onChange={(opcao) => atualizarCampoFormulario("status", opcao)} placeholder="Selecione o status" isDisabled={carregando || !podeEditarStatus} isClearable={false} className="w-full" />
                                 </div>
 
                                 <div className="md:col-span-6">
@@ -555,6 +657,24 @@ export default function ModalDetalheTicket({
                                                 <span>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(mensagem.enviado_em))}</span>
                                             </div>
                                             <div className="prose prose-sm max-w-none text-sm text-slate-800" dangerouslySetInnerHTML={{ __html: sanitizarHtmlMensagem(mensagem.conteudo) }} />
+                                            {(mensagem.anexos ?? []).length > 0 && (
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {mensagem.anexos?.map((anexo) => (
+                                                        <a
+                                                            key={anexo.id}
+                                                            href={`/api/tickets/anexos?id=${anexo.id}`}
+                                                            onClick={(event) => {
+                                                                event.preventDefault();
+                                                                void baixarAnexo(anexo);
+                                                            }}
+                                                            className="text-[10px] font-semibold text-blue-600 underline-offset-2 hover:text-blue-800 hover:underline"
+                                                            title={anexo.nome_original}
+                                                        >
+                                                            {limitarNomeAnexo(anexo.nome_original)}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -573,6 +693,37 @@ export default function ModalDetalheTicket({
                                                 setTextoNovaMensagem(texto);
                                             }}
                                         />
+                                    </div>
+                                    <div className="mt-3">
+                                        <label className="block text-sm font-semibold text-slate-700" htmlFor="detalhe-ticket-chat-anexos">
+                                            Anexos
+                                        </label>
+                                        <input
+                                            id="detalhe-ticket-chat-anexos"
+                                            type="file"
+                                            multiple
+                                            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                                            onChange={selecionarAnexosNovaMensagem}
+                                            disabled={carregando}
+                                            accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                        />
+                                        {anexosNovaMensagem.length > 0 && (
+                                            <div className="mt-2 space-y-2">
+                                                {anexosNovaMensagem.map((anexo, indice) => (
+                                                    <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                        <span className="truncate">{anexo.name}</span>
+                                                        <button
+                                                            type="button"
+                                                            className="font-semibold text-red-600 hover:text-red-700"
+                                                            onClick={() => removerAnexoNovaMensagem(indice)}
+                                                            disabled={carregando}
+                                                        >
+                                                            Remover
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="mt-3 flex justify-end">
                                         <Botao
@@ -596,12 +747,12 @@ export default function ModalDetalheTicket({
 
                     <Modal.Footer>
                         <Botao size="sm" label="Cancelar" icon={<FaTimes />} onClick={aoFechar} disabled={carregando} loading={false} variant="outline-secondary" type="button" className="" />
-                        <Botao size="sm" label="Salvar ticket" icon={<FaSave />} onClick={() => undefined} disabled={carregando || !podeEditarInformacoesGerais} loading={carregando} variant="outline-primary" type="submit" className="" />
+                        <Botao size="sm" label="Salvar ticket" icon={<FaSave />} onClick={() => undefined} disabled={carregando || (!podeEditarInformacoesGerais && !podeEditarStatus)} loading={carregando} variant="outline-primary" type="submit" className="" />
                     </Modal.Footer>
                 </form>
             </Modal>
 
-            <ModalCarregamento show={aberto && carregando} text="Carregando dados do ticket..." />
+            <ModalCarregamento show={aberto && (carregando || baixandoAnexo)} text={baixandoAnexo ? "Baixando anexo..." : "Carregando dados do ticket..."} />
 
             <ModalResposta
                 isOpen={aberto && Boolean(mensagemResposta)}

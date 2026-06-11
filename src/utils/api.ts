@@ -25,12 +25,13 @@ export async function requisitarAPI(
         throw new Error("Informe o method da requisição.");
     }
 
+    const corpoFormulario = body instanceof FormData;
     const resposta = await fetch(rota, {
         method: method,
-        headers: {
+        headers: corpoFormulario ? undefined : {
             "Content-Type": "application/json",
         },
-        body: body ? JSON.stringify(body) : undefined,
+        body: body ? (corpoFormulario ? body : JSON.stringify(body)) : undefined,
     });
 
     const dados = await resposta.json() as RespostaApi<unknown>;
