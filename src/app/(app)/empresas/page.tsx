@@ -219,10 +219,10 @@ export default function PaginaEmpresas() {
                                         Consulte as empresas cadastradas na aplicação.
                                     </p>
                                 </div>
-                                <div className="md:col-span-4 lg:col-span-2">
+                                <div className="md:col-span-3 lg:col-span-2">
                                     <Botao
                                         size="sm"
-                                        label="Nova empresa"
+                                        label="Empresa"
                                         icon={<FaPlus size={14} />}
                                         onClick={() => {
                                             setIdEmpresaSelecionada(null);

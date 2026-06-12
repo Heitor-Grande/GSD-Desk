@@ -50,8 +50,19 @@ type EmpresaUsuarioSideBar = {
 type DadosVerificacaoSideBar = {
     acessoPermitido: boolean;
     fantasiaEmpresa: string;
+    usuario: {
+        nome: string;
+        email: string;
+        perfilNome: string;
+    } | null;
     permissoes: PermissoesPerfil | null;
     empresasUsuario: EmpresaUsuarioSideBar[];
+};
+
+type PropriedadesBarraLateral = {
+    aberta: boolean;
+    aoAbrir: () => void;
+    aoFechar: () => void;
 };
 
 const CHAVE_EMPRESA_NAVEGACAO = "empresaNavegacaoId";
@@ -122,11 +133,15 @@ function ItemMenuLateral({
  * Barra lateral responsiva do GSD Desk.
  * Use como base de navegação lateral em aplicações internas com menus simples ou agrupados.
  */
-export default function BarraLateral() {
-    const [aberta, setAberta] = useState(false);
+export default function BarraLateral({
+    aberta,
+    aoAbrir,
+    aoFechar,
+}: PropriedadesBarraLateral) {
     const [carregandoVerificacao, setCarregandoVerificacao] = useState(false);
     const [carregandoLogout, setCarregandoLogout] = useState(false);
     const [fantasiaEmpresa, setFantasiaEmpresa] = useState("GSD Desk");
+    const [usuarioLogado, setUsuarioLogado] = useState<DadosVerificacaoSideBar["usuario"]>(null);
     const [empresasUsuario, setEmpresasUsuario] = useState<EmpresaUsuarioSideBar[]>([]);
     const [empresaSelecionada, setEmpresaSelecionada] = useState<OpcaoEmpresaUsuario | null>(null);
     const [permissoesPerfil, setPermissoesPerfil] = useState<PermissoesPerfil | null>(null);
@@ -177,11 +192,11 @@ export default function BarraLateral() {
     ];
 
     function abrirBarraLateral() {
-        setAberta(true);
+        aoAbrir();
     }
 
     function fecharBarraLateral() {
-        setAberta(false);
+        aoFechar();
     }
 
     /**
@@ -224,7 +239,7 @@ export default function BarraLateral() {
             });
 
             const dados = resposta.dados as DadosVerificacaoSideBar | null;
-        
+
             if (!dados?.acessoPermitido) {
                 window.location.assign("/");
                 return;
@@ -233,6 +248,8 @@ export default function BarraLateral() {
             if (dados.fantasiaEmpresa) {
                 setFantasiaEmpresa(dados.fantasiaEmpresa);
             }
+
+            setUsuarioLogado(dados.usuario);
 
             const empresasVinculadas = dados.empresasUsuario ?? [];
             const idEmpresaLocalStorage = localStorage.getItem(CHAVE_EMPRESA_NAVEGACAO);
@@ -272,7 +289,7 @@ export default function BarraLateral() {
 
     return (
         <>
-            <nav className="fixed inset-x-0 top-0 z-[1030] flex h-16 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur">
+            <nav className={`fixed inset-x-0 top-0 z-[1030] flex h-16 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur transition-[left] duration-200 ${aberta ? "lg:left-72" : ""}`}>
                 <Botao
                     size="sm"
                     icon={<FaBars />}
@@ -286,6 +303,13 @@ export default function BarraLateral() {
                 />
 
                 <span className="font-bold text-slate-900">{nomeEmpresaNavegacao}</span>
+                {usuarioLogado && (
+                    <div className="ml-auto hidden min-w-0 max-w-[min(34rem,52vw)] flex-col items-end text-right text-xs leading-4 text-slate-600 sm:flex">
+                        <p className="max-w-full truncate font-semibold text-slate-900">{usuarioLogado.nome}</p>
+                        <p className="max-w-full truncate">{usuarioLogado.email}</p>
+                        <p className="max-w-full truncate text-slate-500">{usuarioLogado.perfilNome}</p>
+                    </div>
+                )}
             </nav>
 
             {aberta && (
@@ -293,7 +317,7 @@ export default function BarraLateral() {
                     size="sm"
                     type="button"
                     variant="link"
-                    className="fixed inset-0 z-[1040] h-full w-full rounded-none border-0 bg-slate-950/60 p-0 hover:bg-slate-950/60"
+                    className="fixed inset-0 z-[1040] h-full w-full rounded-none border-0 bg-slate-950/60 p-0 hover:bg-slate-950/60 lg:hidden"
                     onClick={fecharBarraLateral}
                     disabled={false}
                     loading={false}
@@ -302,25 +326,27 @@ export default function BarraLateral() {
             )}
 
             <aside className={`fixed inset-y-0 left-0 z-[1050] flex w-[min(18rem,calc(100vw-2rem))] flex-col bg-slate-950 p-4 text-slate-100 shadow-2xl shadow-slate-950/30 transition-transform duration-200 ${aberta ? "translate-x-0" : "-translate-x-[105%]"}`}>
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <div className="flex items-center gap-3">
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 font-extrabold text-white">{iniciaisEmpresa}</span>
-                        <div>
-                            <strong>{nomeEmpresaNavegacao}</strong>
+                <div className="border-b border-white/10 pb-4">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 font-extrabold text-white">{iniciaisEmpresa}</span>
+                            <div className="min-w-0">
+                                <strong className="block truncate">{nomeEmpresaNavegacao}</strong>
+                            </div>
                         </div>
-                    </div>
 
-                    <Botao
-                        size="sm"
-                        icon={<FaTimes />}
-                        type="button"
-                        variant="link"
-                        className="h-10 w-10 border-white/10 bg-white/5 p-0 text-slate-100 hover:bg-white/10"
-                        onClick={fecharBarraLateral}
-                        disabled={false}
-                        loading={false}
-                        ariaLabel="Fechar menu"
-                    />
+                        <Botao
+                            size="sm"
+                            icon={<FaTimes />}
+                            type="button"
+                            variant="link"
+                            className="h-10 w-10 shrink-0 border-white/10 bg-white/5 p-0 text-slate-100 hover:bg-white/10"
+                            onClick={fecharBarraLateral}
+                            disabled={false}
+                            loading={false}
+                            ariaLabel="Fechar menu"
+                        />
+                    </div>
                 </div>
 
                 <div className="border-b border-white/10 py-4">
@@ -346,7 +372,7 @@ export default function BarraLateral() {
                         <ItemMenuLateral
                             key={item.label}
                             item={item}
-                            aoNavegar={fecharBarraLateral}
+                            aoNavegar={function () { }}
                         />
                     ))}
                 </nav>
