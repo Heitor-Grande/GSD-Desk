@@ -732,50 +732,54 @@ export default function ModalDetalheTicket({
                                 </div>
 
                                 <div className="shrink-0 border-t border-slate-200 bg-white p-3">
-                                    <label className="block text-sm font-semibold text-slate-700" htmlFor="detalhe-ticket-chat-mensagem">
-                                        Nova mensagem
-                                    </label>
-                                    <div className="mt-1 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 [&_.ql-editor]:max-h-24 [&_.ql-editor]:min-h-20 [&_.ql-editor]:overflow-y-auto [&_.ql-toolbar]:px-2 [&_.ql-toolbar]:py-1">
-                                        <EditorMensagemTicket
-                                            id="detalhe-ticket-chat-mensagem"
-                                            value={novaMensagem}
-                                            disabled={carregando}
-                                            onChange={(html, texto) => {
-                                                setNovaMensagem(html);
-                                                setTextoNovaMensagem(texto);
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="mt-2">
-                                        <label className="block text-sm font-semibold text-slate-700" htmlFor="detalhe-ticket-chat-anexos">
-                                            Anexos
-                                        </label>
-                                        <input
-                                            id="detalhe-ticket-chat-anexos"
-                                            type="file"
-                                            multiple
-                                            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700"
-                                            onChange={selecionarAnexosNovaMensagem}
-                                            disabled={carregando}
-                                            accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                        />
-                                        {anexosNovaMensagem.length > 0 && (
-                                            <div className="mt-2 space-y-2">
-                                                {anexosNovaMensagem.map((anexo, indice) => (
-                                                    <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                        <span className="truncate">{anexo.name}</span>
-                                                        <button
-                                                            type="button"
-                                                            className="font-semibold text-red-600 hover:text-red-700"
-                                                            onClick={() => removerAnexoNovaMensagem(indice)}
-                                                            disabled={carregando}
-                                                        >
-                                                            Remover
-                                                        </button>
-                                                    </div>
-                                                ))}
+                                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(13rem,17rem)]">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700" htmlFor="detalhe-ticket-chat-mensagem">
+                                                Nova mensagem
+                                            </label>
+                                            <div className="mt-1 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 [&_.ql-editor]:max-h-24 [&_.ql-editor]:min-h-20 [&_.ql-editor]:overflow-y-auto [&_.ql-toolbar]:px-2 [&_.ql-toolbar]:py-1">
+                                                <EditorMensagemTicket
+                                                    id="detalhe-ticket-chat-mensagem"
+                                                    value={novaMensagem}
+                                                    disabled={carregando}
+                                                    onChange={(html, texto) => {
+                                                        setNovaMensagem(html);
+                                                        setTextoNovaMensagem(texto);
+                                                    }}
+                                                />
                                             </div>
-                                        )}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700" htmlFor="detalhe-ticket-chat-anexos">
+                                                Anexos
+                                            </label>
+                                            <input
+                                                id="detalhe-ticket-chat-anexos"
+                                                type="file"
+                                                multiple
+                                                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700"
+                                                onChange={selecionarAnexosNovaMensagem}
+                                                disabled={carregando}
+                                                accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                            />
+                                            {anexosNovaMensagem.length > 0 && (
+                                                <div className="mt-2 space-y-2">
+                                                    {anexosNovaMensagem.map((anexo, indice) => (
+                                                        <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                            <span className="truncate">{anexo.name}</span>
+                                                            <button
+                                                                type="button"
+                                                                className="font-semibold text-red-600 hover:text-red-700"
+                                                                onClick={() => removerAnexoNovaMensagem(indice)}
+                                                                disabled={carregando}
+                                                            >
+                                                                Remover
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="mt-2 flex justify-end">
                                         <Botao

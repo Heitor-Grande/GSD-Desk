@@ -706,53 +706,57 @@ export default function ModalCadastroTicket({
                                 </div>
 
                                 <div className="border-t border-slate-200 bg-white p-4">
-                                    <label className="block text-sm font-semibold text-slate-700" htmlFor="ticket-chat-mensagem">
-                                        Mensagem
-                                    </label>
-                                    <div className="mt-1 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
-                                        <EditorMensagemTicket
-                                            id="ticket-chat-mensagem"
-                                            value={formulario.mensagemInicial}
-                                            disabled={carregando}
-                                            onChange={(html, texto) => {
-                                                setFormulario((estadoAtual) => ({
-                                                    ...estadoAtual,
-                                                    mensagemInicial: html,
-                                                    textoMensagemInicial: texto,
-                                                }));
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="mt-3">
-                                        <label className="block text-sm font-semibold text-slate-700" htmlFor="ticket-chat-anexos">
-                                            Anexos
-                                        </label>
-                                        <input
-                                            id="ticket-chat-anexos"
-                                            type="file"
-                                            multiple
-                                            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                                            onChange={selecionarAnexosMensagemInicial}
-                                            disabled={carregando}
-                                            accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                        />
-                                        {anexosMensagemInicial.length > 0 && (
-                                            <div className="mt-2 space-y-2">
-                                                {anexosMensagemInicial.map((anexo, indice) => (
-                                                    <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                        <span className="truncate">{anexo.name}</span>
-                                                        <button
-                                                            type="button"
-                                                            className="font-semibold text-red-600 hover:text-red-700"
-                                                            onClick={() => removerAnexoMensagemInicial(indice)}
-                                                            disabled={carregando}
-                                                        >
-                                                            Remover
-                                                        </button>
-                                                    </div>
-                                                ))}
+                                    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)]">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700" htmlFor="ticket-chat-mensagem">
+                                                Mensagem
+                                            </label>
+                                            <div className="mt-1 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                                                <EditorMensagemTicket
+                                                    id="ticket-chat-mensagem"
+                                                    value={formulario.mensagemInicial}
+                                                    disabled={carregando}
+                                                    onChange={(html, texto) => {
+                                                        setFormulario((estadoAtual) => ({
+                                                            ...estadoAtual,
+                                                            mensagemInicial: html,
+                                                            textoMensagemInicial: texto,
+                                                        }));
+                                                    }}
+                                                />
                                             </div>
-                                        )}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700" htmlFor="ticket-chat-anexos">
+                                                Anexos
+                                            </label>
+                                            <input
+                                                id="ticket-chat-anexos"
+                                                type="file"
+                                                multiple
+                                                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                                                onChange={selecionarAnexosMensagemInicial}
+                                                disabled={carregando}
+                                                accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                            />
+                                            {anexosMensagemInicial.length > 0 && (
+                                                <div className="mt-2 space-y-2">
+                                                    {anexosMensagemInicial.map((anexo, indice) => (
+                                                        <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                            <span className="truncate">{anexo.name}</span>
+                                                            <button
+                                                                type="button"
+                                                                className="font-semibold text-red-600 hover:text-red-700"
+                                                                onClick={() => removerAnexoMensagemInicial(indice)}
+                                                                disabled={carregando}
+                                                            >
+                                                                Remover
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
