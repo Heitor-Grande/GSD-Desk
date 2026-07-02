@@ -4,11 +4,10 @@ import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarEmpresaPertenceAoUsuario } from "@/utils/empresaUsuario";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
-import { normalizarNomePerfil, STATUS_INICIAL_TICKET } from "@/utils/tickets";
+import { STATUS_INICIAL_TICKET } from "@/utils/tickets";
 
 type ContextoDashboardTickets = {
     suporte_visualiza_apenas_tickets_proprios: boolean;
-    perfil_nome: string | null;
 };
 
 type QuantidadeStatusTicket = {
@@ -41,7 +40,7 @@ export async function GET(request: NextRequest) {
     try {
         const respostaPermissao = await verificarPermissaoAPI({
             request: request,
-            recurso: "dashboard",
+            recurso: "ticket",
             acao: "visualizar",
         });
 
@@ -73,27 +72,19 @@ export async function GET(request: NextRequest) {
         const resultadoContexto = await consultarBancoDados<ContextoDashboardTickets>(
             `
                 select
-                    e.suporte_visualiza_apenas_tickets_proprios,
-                    p.nome as perfil_nome
+                    e.suporte_visualiza_apenas_tickets_proprios
                 from empresas e
-                inner join usuarios u on u.id = $2
-                left join perfil p on p.id = u.perfil_id
                 where e.id = $1
                     and e.ativo = true
                 limit 1
             `,
-            [empresaNavegacaoId, idUsuario]
+            [empresaNavegacaoId]
         );
         const contexto = resultadoContexto.rows[0];
 
         if (!contexto) {
             return criarRespostaApi(false, "Empresa não encontrada ou inativa.", null, 404);
         }
-
-        const perfilNormalizado = normalizarNomePerfil(contexto.perfil_nome);
-        const usuarioAgenteSuporte = perfilNormalizado === "agente de suporte";
-        const usuarioCliente = perfilNormalizado === "cliente";
-        const usuarioClienteManager = perfilNormalizado === "cliente manager";
 
         const resultadoStatus = await consultarBancoDados<QuantidadeStatusTicket>(
             `
@@ -102,39 +93,19 @@ export async function GET(request: NextRequest) {
                     count(*)::text as quantidade
                 from tickets t
                 where t.empresa_id = $1
-                    and t.status = any($6::text[])
+                    and t.status = any($4::text[])
                     and (
-                        $5::boolean = true
-                        or (
-                            $3::boolean = true
-                            and (
-                                $4::boolean = false
-                                or t.agente_id = $2
-                                or t.status = $7
-                            )
-                        )
-                        or (
-                            $8::boolean = true
-                            and t.responsavel_id = $2
-                        )
-                        or (
-                            $3::boolean = false
-                            and $5::boolean = false
-                            and $8::boolean = false
-                            and t.responsavel_id = $2
-                        )
+                        $3::boolean = false
+                        or t.agente_id = $2
+                        or t.responsavel_id = $2
                     )
                 group by t.status
             `,
             [
                 empresaNavegacaoId,
                 idUsuario,
-                usuarioAgenteSuporte,
                 contexto.suporte_visualiza_apenas_tickets_proprios,
-                usuarioClienteManager,
                 statusTicketsDashboard,
-                STATUS_INICIAL_TICKET,
-                usuarioCliente,
             ]
         );
 
