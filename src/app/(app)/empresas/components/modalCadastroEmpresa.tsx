@@ -74,6 +74,11 @@ const estadoInicialFormulario: DadosCadastroEmpresa = {
     atualizadoEm: "",
 };
 
+const opcaoSemSuperior: OpcaoSeletor = {
+    label: "Selecione...",
+    value: "",
+};
+
 function formatarCnpj(valor: string): string {
     const digitos = valor.replace(/\D/g, "").slice(0, 14);
 
@@ -150,10 +155,13 @@ export default function ModalCadastroEmpresa({
             });
             const empresas = Array.isArray(resposta.dados) ? resposta.dados as EmpresaSuperiorApi[] : [];
 
-            setOpcoesSuperior(empresas.map((empresa) => ({
-                label: empresa.fantasia,
-                value: String(empresa.id),
-            })));
+            setOpcoesSuperior([
+                opcaoSemSuperior,
+                ...empresas.map((empresa) => ({
+                    label: empresa.fantasia,
+                    value: String(empresa.id),
+                })),
+            ]);
         } catch (erro) {
             const mensagemErro = erro instanceof Error
                 ? erro.message
@@ -223,7 +231,7 @@ export default function ModalCadastroEmpresa({
                     email: formulario.email,
                     telefone: formulario.telefone,
                     ativo: formulario.ativo,
-                    superiorId: formulario.superior ? Number(formulario.superior.value) : null,
+                    superiorId: formulario.superior?.value ? Number(formulario.superior.value) : null,
                     exigirVinculoProduto: formulario.exigirVinculoProduto,
                     suporteVisualizaApenasTicketsProprios: formulario.suporteVisualizaApenasTicketsProprios,
                 },
@@ -416,9 +424,9 @@ export default function ModalCadastroEmpresa({
                                     options={opcoesSuperior}
                                     value={formulario.superior}
                                     onChange={(opcao) => atualizarCampoFormulario("superior", opcao)}
-                                    placeholder="Nenhum superior"
+                                    placeholder="Selecione..."
                                     isDisabled={carregando}
-                                    isClearable
+                                    isClearable={false}
                                     className="mb-0"
                                 />
                             </div>

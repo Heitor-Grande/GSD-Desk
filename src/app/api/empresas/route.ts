@@ -129,8 +129,6 @@ async function validarEmpresaSuperior({
         return false;
     }
 
-    const parametros = idEmpresaAtual ? [idSuperior, idUsuario, idEmpresaAtual] : [idSuperior, idUsuario];
-    const filtroEmpresaAtual = idEmpresaAtual ? "and e.id <> $3" : "";
     const resultado = await consultarBancoDados<{ id: number }>(
         `
             select e.id
@@ -139,14 +137,41 @@ async function validarEmpresaSuperior({
             where e.id = $1
                 and ue.usuario_id = $2
                 and e.ativo = true
-                and e.superior_id is null
-                ${filtroEmpresaAtual}
             limit 1
         `,
-        parametros
+        [idSuperior, idUsuario]
     );
 
-    return Boolean(resultado.rows[0]);
+    if (!resultado.rows[0]) {
+        return false;
+    }
+
+    if (!idEmpresaAtual) {
+        return true;
+    }
+
+    const resultadoCiclo = await consultarBancoDados<{ id: number }>(
+        `
+            with recursive descendentes as (
+                select e.id
+                from empresas e
+                where e.superior_id = $1
+
+                union
+
+                select filha.id
+                from empresas filha
+                inner join descendentes d on d.id = filha.superior_id
+            )
+            select id
+            from descendentes
+            where id = $2
+            limit 1
+        `,
+        [idEmpresaAtual, idSuperior]
+    );
+
+    return !resultadoCiclo.rows[0];
 }
 
 /**
@@ -350,7 +375,6 @@ export async function GET(request: NextRequest) {
                     inner join usuarios_empresas ue on ue.empresa_id = e.id
                     where ue.usuario_id = $1
                         and e.ativo = true
-                        and e.superior_id is null
                         ${filtroEmpresaAtual}
                     order by e.fantasia asc
                 `,
