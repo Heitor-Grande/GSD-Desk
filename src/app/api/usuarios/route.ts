@@ -317,7 +317,7 @@ export async function POST(request: NextRequest) {
                     nome: nome,
                     email: email,
                     senha: senha,
-                    urlAplicacao: request.nextUrl.origin,
+                    urlAplicacao: process.env.AMBIENTE === "PROD" ? process.env.URL_PRODUCAO! : request.nextUrl.origin,
                 }),
             });
         } catch (erro) {
