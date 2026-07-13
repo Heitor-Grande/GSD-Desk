@@ -348,6 +348,8 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "O perfil informado não foi encontrado.", null, 400);
         }
 
+        console.log(erro)
+
         return criarRespostaApi(false, "Não foi possível cadastrar o usuário.", null, 500);
     }
 }
