@@ -320,13 +320,19 @@ export async function POST(request: NextRequest) {
             }),
         });
 
-        await registrarAuditoriaSegura({
-            acao: "CREATE",
-            usuarioId: idUsuarioCriador,
-            empresaId: empresaNavegacaoId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "CREATE",
+                usuarioId: idUsuarioCriador,
+                empresaId: empresaNavegacaoId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        }
 
         return criarRespostaApi(true, "Usuário cadastrado com sucesso.", null, 201);
     } catch (erro) {
