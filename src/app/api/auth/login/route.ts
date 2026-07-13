@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         if (erro instanceof SyntaxError) {
             return criarRespostaApi(false, "Requisição inválida.", null, 400);
         }
-      
+        console.log(erro);
         return criarRespostaApi(false, "Não foi possível realizar o login.", null, 500);
     }
 }
