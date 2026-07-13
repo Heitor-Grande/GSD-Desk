@@ -309,16 +309,22 @@ export async function POST(request: NextRequest) {
             [resultadoUsuario.rows[0].id, empresaNavegacaoId, idUsuarioCriador]
         );
 
-        await enviarEmail({
-            to: email,
-            subject: "Bem-vindo ao GSD Desk",
-            html: montarHtmlBoasVindasUsuario({
-                nome: nome,
-                email: email,
-                senha: senha,
-                urlAplicacao: request.nextUrl.origin,
-            }),
-        });
+        try {
+            await enviarEmail({
+                to: email,
+                subject: "Bem-vindo ao GSD Desk",
+                html: montarHtmlBoasVindasUsuario({
+                    nome: nome,
+                    email: email,
+                    senha: senha,
+                    urlAplicacao: request.nextUrl.origin,
+                }),
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO ENVIAR E-MAIL DE BOAS-VINDAS');
+            console.error(erro);
+        };
 
         try {
             await registrarAuditoriaSegura({
@@ -332,7 +338,7 @@ export async function POST(request: NextRequest) {
 
             console.error('ERRO AO GRAVAR LOG')
             console.error(erro)
-        }
+        };
 
         return criarRespostaApi(true, "Usuário cadastrado com sucesso.", null, 201);
     } catch (erro) {
@@ -347,8 +353,6 @@ export async function POST(request: NextRequest) {
         if (erro instanceof Error && "code" in erro && erro.code === "23503") {
             return criarRespostaApi(false, "O perfil informado não foi encontrado.", null, 400);
         }
-
-        console.log(erro)
 
         return criarRespostaApi(false, "Não foi possível cadastrar o usuário.", null, 500);
     }
