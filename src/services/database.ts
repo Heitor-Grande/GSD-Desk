@@ -6,7 +6,9 @@ const conexaoBancoDados = new Pool({
     database: process.env.POSTGRES_DATABASE,
     user: process.env.POSTGRES_USER,
     password: process.env.POSTGRES_PASSWORD,
-    ssl: process.env.POSTGRES_SSL === "true" ? true : false,
+    ssl: process.env.POSTGRES_SSL === "true"
+        ? { rejectUnauthorized: false }
+        : false,
 });
 
 /**
