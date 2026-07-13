@@ -261,13 +261,19 @@ export async function POST(request: NextRequest) {
             [empresaId, usuarioId, produtoId, idUsuarioAutenticado]
         );
 
-        await registrarAuditoriaSegura({
-            acao: "CREATE",
-            usuarioId: idUsuarioAutenticado,
-            empresaId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "CREATE",
+                usuarioId: idUsuarioAutenticado,
+                empresaId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Usuário vinculado ao produto com sucesso.", null, 201);
     } catch (erro) {
@@ -349,14 +355,20 @@ export async function DELETE(request: NextRequest) {
             return criarRespostaApi(false, "Vínculo do produto não encontrado.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "DELETE",
-            usuarioId: idUsuarioAutenticado,
-            empresaId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultado.rows[0],
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "DELETE",
+                usuarioId: idUsuarioAutenticado,
+                empresaId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultado.rows[0],
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Vínculo do produto removido com sucesso.", null);
     } catch {

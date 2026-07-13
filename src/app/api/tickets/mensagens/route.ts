@@ -391,13 +391,19 @@ export async function POST(request: NextRequest) {
             console.error("Não foi possível enviar notificação de nova mensagem do ticket.", erroEmail);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "CREATE",
-            usuarioId: idUsuario,
-            empresaId: empresaNavegacaoId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "CREATE",
+                usuarioId: idUsuario,
+                empresaId: empresaNavegacaoId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Mensagem enviada com sucesso.", null, 201);
     } catch {

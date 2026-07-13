@@ -476,26 +476,32 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Usuário não encontrado.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "UPDATE",
-            usuarioId: idUsuarioAtualizacao,
-            empresaId: Number.isInteger(empresaAuditoriaId) && empresaAuditoriaId > 0
-                ? empresaAuditoriaId
-                : await obterEmpresaAuditoriaUsuario(idUsuarioAtualizacao),
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultadoUsuarioAntes.rows[0],
-            dadosDepois: {
-                id,
-                nome,
-                email,
-                telefone,
-                documento,
-                perfilId,
-                ativo,
-                isAdmin,
-            },
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "UPDATE",
+                usuarioId: idUsuarioAtualizacao,
+                empresaId: Number.isInteger(empresaAuditoriaId) && empresaAuditoriaId > 0
+                    ? empresaAuditoriaId
+                    : await obterEmpresaAuditoriaUsuario(idUsuarioAtualizacao),
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultadoUsuarioAntes.rows[0],
+                dadosDepois: {
+                    id,
+                    nome,
+                    email,
+                    telefone,
+                    documento,
+                    perfilId,
+                    ativo,
+                    isAdmin,
+                },
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Usuário atualizado com sucesso.", null);
     } catch (erro) {
@@ -579,14 +585,20 @@ export async function DELETE(request: NextRequest) {
             [id]
         );
 
-        await registrarAuditoriaSegura({
-            acao: "DELETE",
-            usuarioId: idUsuarioExclusao,
-            empresaId: await obterEmpresaAuditoriaUsuario(idUsuarioExclusao),
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: usuarioAntes,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "DELETE",
+                usuarioId: idUsuarioExclusao,
+                empresaId: await obterEmpresaAuditoriaUsuario(idUsuarioExclusao),
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: usuarioAntes,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Usuário excluído com sucesso.", null);
     } catch (erro) {

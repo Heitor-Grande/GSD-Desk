@@ -229,14 +229,20 @@ export async function DELETE(request: NextRequest) {
             return criarRespostaApi(false, "Empresa não encontrada.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "DELETE",
-            usuarioId: idUsuario,
-            empresaId: id,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultado.rows[0],
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "DELETE",
+                usuarioId: idUsuario,
+                empresaId: id,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultado.rows[0],
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Empresa excluída com sucesso.", null);
     } catch (erro) {
@@ -513,13 +519,19 @@ export async function POST(request: NextRequest) {
             [idUsuario, resultado.rows[0].id, idUsuario]
         );
 
-        await registrarAuditoriaSegura({
-            acao: "CREATE",
-            usuarioId: idUsuario,
-            empresaId: resultado.rows[0].id,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "CREATE",
+                usuarioId: idUsuario,
+                empresaId: resultado.rows[0].id,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Empresa cadastrada com sucesso.", resultado.rows[0], 201);
     } catch (erro) {
@@ -653,15 +665,21 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Empresa não encontrada.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "UPDATE",
-            usuarioId: idUsuario,
-            empresaId: id,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultadoEmpresaAntes.rows[0],
-            dadosDepois: resultado.rows[0],
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "UPDATE",
+                usuarioId: idUsuario,
+                empresaId: id,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultadoEmpresaAntes.rows[0],
+                dadosDepois: resultado.rows[0],
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Empresa atualizada com sucesso.", resultado.rows[0]);
     } catch (erro) {

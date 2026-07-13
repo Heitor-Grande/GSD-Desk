@@ -194,13 +194,19 @@ export async function POST(request: NextRequest) {
             [empresaId, nome, descricao, ativo, idUsuarioAutenticado]
         );
 
-        await registrarAuditoriaSegura({
-            acao: "CREATE",
-            usuarioId: idUsuarioAutenticado,
-            empresaId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "CREATE",
+                usuarioId: idUsuarioAutenticado,
+                empresaId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Produto cadastrado com sucesso.", resultado.rows[0], 201);
     } catch (erro) {
@@ -310,15 +316,21 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Produto não encontrado para esta empresa.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "UPDATE",
-            usuarioId: idUsuarioAutenticado,
-            empresaId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultadoProdutoAntes.rows[0],
-            dadosDepois: resultado.rows[0],
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "UPDATE",
+                usuarioId: idUsuarioAutenticado,
+                empresaId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultadoProdutoAntes.rows[0],
+                dadosDepois: resultado.rows[0],
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Produto atualizado com sucesso.", resultado.rows[0]);
     } catch (erro) {
@@ -407,14 +419,20 @@ export async function DELETE(request: NextRequest) {
             return criarRespostaApi(false, "Produto não encontrado para esta empresa.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "DELETE",
-            usuarioId: idUsuarioAutenticado,
-            empresaId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultado.rows[0],
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "DELETE",
+                usuarioId: idUsuarioAutenticado,
+                empresaId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultado.rows[0],
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Produto excluído com sucesso.", resultado.rows[0]);
     } catch {

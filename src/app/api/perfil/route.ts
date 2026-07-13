@@ -190,13 +190,19 @@ export async function POST(request: NextRequest) {
             ]
         );
 
-        await registrarAuditoriaSegura({
-            acao: "CREATE",
-            usuarioId: idUsuario,
-            empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "CREATE",
+                usuarioId: idUsuario,
+                empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Perfil cadastrado com sucesso.", null, 201);
     } catch (erro) {
@@ -295,21 +301,27 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Perfil não encontrado.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "UPDATE",
-            usuarioId: idUsuario,
-            empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultadoPerfilAntes.rows[0],
-            dadosDepois: {
-                id,
-                nome,
-                descricao,
-                ativo,
-                permissoes: body.permissoes,
-            },
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "UPDATE",
+                usuarioId: idUsuario,
+                empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultadoPerfilAntes.rows[0],
+                dadosDepois: {
+                    id,
+                    nome,
+                    descricao,
+                    ativo,
+                    permissoes: body.permissoes,
+                },
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Perfil atualizado com sucesso.", null);
     } catch (erro) {
@@ -387,14 +399,20 @@ export async function DELETE(request: NextRequest) {
             return criarRespostaApi(false, "Perfil não encontrado.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "DELETE",
-            usuarioId: idUsuario,
-            empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultado.rows[0],
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "DELETE",
+                usuarioId: idUsuario,
+                empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultado.rows[0],
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Perfil excluído com sucesso.", null);
     } catch {

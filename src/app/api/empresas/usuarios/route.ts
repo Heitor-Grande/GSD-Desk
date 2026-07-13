@@ -210,7 +210,6 @@ export async function GET(request: NextRequest) {
                 inner join usuarios u on u.id = ue.usuario_id
                 inner join empresas e on e.id = ue.empresa_id
                 where ue.usuario_id = $1
-                    and e.superior_id is not null
                 order by e.fantasia asc
             `,
             [usuarioId]
@@ -318,13 +317,19 @@ export async function POST(request: NextRequest) {
             [empresaId, usuarioId]
         );
 
-        await registrarAuditoriaSegura({
-            acao: "CREATE",
-            usuarioId: idUsuarioAutenticado,
-            empresaId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "CREATE",
+                usuarioId: idUsuarioAutenticado,
+                empresaId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Vínculo criado com sucesso.", null, 201);
     } catch (erro) {
@@ -440,18 +445,24 @@ export async function PATCH(request: NextRequest) {
             [empresaId, usuarioId]
         );
 
-        await registrarAuditoriaSegura({
-            acao: "UPDATE",
-            usuarioId: idUsuarioAutenticado,
-            empresaId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultadoUsuarioAntes.rows[0],
-            dadosDepois: {
-                usuarioId,
-                empresaPadrao: empresaId,
-            },
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "UPDATE",
+                usuarioId: idUsuarioAutenticado,
+                empresaId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultadoUsuarioAntes.rows[0],
+                dadosDepois: {
+                    usuarioId,
+                    empresaPadrao: empresaId,
+                },
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Empresa padrão atualizada com sucesso.", null);
     } catch (erro) {
@@ -526,14 +537,20 @@ export async function DELETE(request: NextRequest) {
             [vinculoRemovido.usuario_id, vinculoRemovido.empresa_id]
         );
 
-        await registrarAuditoriaSegura({
-            acao: "DELETE",
-            usuarioId: idUsuarioAutenticado,
-            empresaId: vinculoRemovido.empresa_id,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: vinculoRemovido,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "DELETE",
+                usuarioId: idUsuarioAutenticado,
+                empresaId: vinculoRemovido.empresa_id,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: vinculoRemovido,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Vínculo removido com sucesso.", null);
     } catch {

@@ -788,15 +788,21 @@ export async function PUT(request: NextRequest) {
             [titulo, responsavelId, agenteId, status, prioridade, ticketEncerrado, idUsuario, id, empresaNavegacaoId]
         );
 
-        await registrarAuditoriaSegura({
-            acao: "UPDATE",
-            usuarioId: idUsuario,
-            empresaId: empresaNavegacaoId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultadoTicketAntes.rows[0],
-            dadosDepois: resultadoTicketDepois.rows[0],
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "UPDATE",
+                usuarioId: idUsuario,
+                empresaId: empresaNavegacaoId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultadoTicketAntes.rows[0],
+                dadosDepois: resultadoTicketDepois.rows[0],
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Ticket atualizado com sucesso.", null);
     } catch (erro) {
@@ -1043,13 +1049,19 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        await registrarAuditoriaSegura({
-            acao: "CREATE",
-            usuarioId: idUsuario,
-            empresaId,
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "CREATE",
+                usuarioId: idUsuario,
+                empresaId,
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Ticket criado com sucesso.", { id: ticketId }, 201);
     } catch (erro) {

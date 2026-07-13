@@ -169,23 +169,29 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Usuário não encontrado.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "UPDATE",
-            usuarioId: idUsuario,
-            empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultadoUsuarioAntes.rows[0],
-            dadosDepois: {
-                id: idUsuario,
-                nome,
-                email,
-                telefone,
-                documento,
-                ativo,
-                senhaAlterada: Boolean(senhaCriptografada),
-            },
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "UPDATE",
+                usuarioId: idUsuario,
+                empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultadoUsuarioAntes.rows[0],
+                dadosDepois: {
+                    id: idUsuario,
+                    nome,
+                    email,
+                    telefone,
+                    documento,
+                    ativo,
+                    senhaAlterada: Boolean(senhaCriptografada),
+                },
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(true, "Dados da conta atualizados com sucesso.", null);
     } catch (erro) {

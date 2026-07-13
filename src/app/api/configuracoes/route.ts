@@ -271,15 +271,21 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Configuração não encontrada.", null, 404);
         }
 
-        await registrarAuditoriaSegura({
-            acao: "UPDATE",
-            usuarioId: idUsuario,
-            empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
-            metodo: request.method,
-            rota: request.nextUrl.pathname,
-            dadosAntes: resultadoConfiguracaoAntes.rows[0] ? mapearConfiguracaoParaAuditoria(resultadoConfiguracaoAntes.rows[0]) : null,
-            dadosDepois: mapearConfiguracaoParaAuditoria(configuracao),
-        });
+        try {
+            await registrarAuditoriaSegura({
+                acao: "UPDATE",
+                usuarioId: idUsuario,
+                empresaId: await obterEmpresaAuditoriaUsuario(idUsuario),
+                metodo: request.method,
+                rota: request.nextUrl.pathname,
+                dadosAntes: resultadoConfiguracaoAntes.rows[0] ? mapearConfiguracaoParaAuditoria(resultadoConfiguracaoAntes.rows[0]) : null,
+                dadosDepois: mapearConfiguracaoParaAuditoria(configuracao),
+            });
+        } catch (erro) {
+
+            console.error('ERRO AO GRAVAR LOG')
+            console.error(erro)
+        };
 
         return criarRespostaApi(
             true,
