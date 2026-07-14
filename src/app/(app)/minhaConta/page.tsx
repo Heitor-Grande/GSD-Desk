@@ -347,7 +347,7 @@ export default function PaginaMinhaConta() {
                                         id="minha-conta-ativo"
                                         type="checkbox"
                                         checked={formulario.ativo}
-                                        disabled={carregando}
+                                        disabled={true}
                                         onChange={(event) => atualizarCampoFormulario("ativo", event.target.checked)}
                                         className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                                     />
