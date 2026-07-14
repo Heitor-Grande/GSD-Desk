@@ -373,6 +373,7 @@ export default function ModalCadastroPerfil({
                 onExited={limparEstadoModalCadastroPerfil}
                 centered
                 size="lg"
+                contentClassName="overflow-hidden"
             >
                 <Modal.Header closeButton>
                     <Modal.Title className="text-lg font-bold">
@@ -380,10 +381,10 @@ export default function ModalCadastroPerfil({
                     </Modal.Title>
                 </Modal.Header>
 
-                <form onSubmit={salvarPerfil}>
-                    <Modal.Body>
-                        <div className="grid gap-4 md:grid-cols-12">
-                            <div className="md:col-span-6">
+                <form onSubmit={salvarPerfil} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <Modal.Body className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
+                        <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-12">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="perfil-nome"
                                     label="Nome do perfil"
@@ -397,7 +398,7 @@ export default function ModalCadastroPerfil({
                                 />
                             </div>
 
-                            <div className="md:col-span-6">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="perfil-descricao"
                                     label="Descrição"
@@ -411,8 +412,8 @@ export default function ModalCadastroPerfil({
                                 />
                             </div>
 
-                            <div className="md:col-span-12">
-                                <div className="flex items-center gap-3">
+                            <div className="min-w-0 md:col-span-12">
+                                <div className="flex min-h-10 items-center gap-3">
                                     <input
                                         id="perfil-ativo"
                                         className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
@@ -421,14 +422,48 @@ export default function ModalCadastroPerfil({
                                         disabled={carregando}
                                         onChange={(event) => atualizarCampoFormulario("ativo", event.target.checked)}
                                     />
-                                    <label className="text-sm font-semibold text-slate-700" htmlFor="perfil-ativo">
+                                    <label className="break-words text-sm font-semibold text-slate-700" htmlFor="perfil-ativo">
                                         Perfil ativo
                                     </label>
                                 </div>
                             </div>
 
-                            <div className="md:col-span-12">
-                                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                            <div className="min-w-0 md:col-span-12">
+                                <div className="space-y-3 md:hidden">
+                                    {recursosPermissao.map((recurso) => (
+                                        <fieldset key={recurso.chave} className="min-w-0 rounded-lg border border-slate-200 bg-white p-3">
+                                            <legend className="px-1 text-sm font-bold text-slate-900">
+                                                {recurso.titulo}
+                                            </legend>
+
+                                            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                                {acoesPermissao.map((acao) => (
+                                                    <label
+                                                        key={`${recurso.chave}-${acao.chave}-mobile`}
+                                                        className="flex min-h-10 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
+                                                        htmlFor={`perfil-${recurso.chave}-${acao.chave}-mobile`}
+                                                    >
+                                                        <input
+                                                            id={`perfil-${recurso.chave}-${acao.chave}-mobile`}
+                                                            className="h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                                            type="checkbox"
+                                                            checked={formulario.permissoes[recurso.chave][acao.chave]}
+                                                            disabled={carregando}
+                                                            onChange={(event) => atualizarPermissao(
+                                                                recurso.chave,
+                                                                acao.chave,
+                                                                event.target.checked
+                                                            )}
+                                                        />
+                                                        <span className="min-w-0 break-words">{acao.titulo}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </fieldset>
+                                    ))}
+                                </div>
+
+                                <div className="hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
                                     <table className="w-full min-w-[38rem] border-collapse text-sm">
                                         <thead>
                                             <tr>
@@ -470,7 +505,7 @@ export default function ModalCadastroPerfil({
                         </div>
                     </Modal.Body>
 
-                    <Modal.Footer>
+                    <Modal.Footer className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                         {estaEditandoPerfil && (
                             <Botao
                                 size="sm"
@@ -481,7 +516,7 @@ export default function ModalCadastroPerfil({
                                 loading={false}
                                 variant="outline-danger"
                                 type="button"
-                                className="mr-auto"
+                                className="w-full sm:mr-auto sm:w-auto"
                             />
                         )}
 
@@ -494,7 +529,7 @@ export default function ModalCadastroPerfil({
                             loading={false}
                             variant="outline-secondary"
                             type="button"
-                            className=""
+                            className="w-full sm:w-auto"
                         />
 
                         <Botao
@@ -506,7 +541,7 @@ export default function ModalCadastroPerfil({
                             loading={carregando}
                             variant="outline-primary"
                             type="submit"
-                            className=""
+                            className="w-full sm:w-auto"
                         />
                     </Modal.Footer>
                 </form>

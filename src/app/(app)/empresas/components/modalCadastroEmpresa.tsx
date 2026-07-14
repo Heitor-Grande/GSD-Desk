@@ -327,7 +327,8 @@ export default function ModalCadastroEmpresa({
                 </Modal.Header>
 
                 <Modal.Body>
-                    <div className="mb-4 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                    <div className="mb-4 overflow-x-auto border-b border-slate-200 pb-3">
+                        <div className="flex min-w-max gap-2">
                         <button
                             type="button"
                             className={obterClassesAba("dados")}
@@ -356,6 +357,7 @@ export default function ModalCadastroEmpresa({
                         >
                             Regras
                         </button>
+                        </div>
                     </div>
 
                     {abaAtiva === "dados" && (
@@ -518,7 +520,7 @@ export default function ModalCadastroEmpresa({
                                         disabled={carregando}
                                         onChange={(event) => atualizarCampoFormulario("exigirVinculoProduto", event.target.checked)}
                                     />
-                                    <div>
+                                    <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <label className="text-sm font-semibold text-slate-800" htmlFor="empresa-exigir-vinculo-produto">
                                                 Exigir vínculo de usuários aos produtos
@@ -544,7 +546,7 @@ export default function ModalCadastroEmpresa({
                                         disabled={carregando}
                                         onChange={(event) => atualizarCampoFormulario("suporteVisualizaApenasTicketsProprios", event.target.checked)}
                                     />
-                                    <div>
+                                    <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <label className="text-sm font-semibold text-slate-800" htmlFor="empresa-suporte-tickets-proprios">
                                                 Usuário de suporte visualiza apenas os seus próprios tickets
@@ -563,7 +565,7 @@ export default function ModalCadastroEmpresa({
                     )}
                 </Modal.Body>
 
-                <Modal.Footer>
+                <Modal.Footer className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                     {abaAtiva === "dados" || abaAtiva === "regras" ? (
                         <>
                         {estaVisualizandoEmpresa && (
@@ -576,7 +578,7 @@ export default function ModalCadastroEmpresa({
                                 loading={false}
                                 variant="outline-danger"
                                 type="button"
-                                className="mr-auto"
+                                className="w-full sm:mr-auto sm:w-auto"
                             />
                         )}
 
@@ -589,7 +591,7 @@ export default function ModalCadastroEmpresa({
                             loading={false}
                             variant="outline-secondary"
                             type="button"
-                            className=""
+                            className="w-full sm:w-auto"
                         />
 
                         <Botao
@@ -605,7 +607,7 @@ export default function ModalCadastroEmpresa({
                             loading={carregando}
                             variant="outline-primary"
                             type={abaAtiva === "dados" ? "submit" : "button"}
-                            className=""
+                            className="w-full sm:w-auto"
                             form={abaAtiva === "dados" ? "formulario-cadastro-empresa" : undefined}
                         />
                         </>
@@ -619,7 +621,7 @@ export default function ModalCadastroEmpresa({
                             loading={false}
                             variant="outline-secondary"
                             type="button"
-                            className=""
+                            className="w-full sm:w-auto"
                         />
                     )}
                 </Modal.Footer>

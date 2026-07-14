@@ -617,7 +617,8 @@ export default function ModalDetalheTicket({
 
                 <form id="formulario-detalhe-ticket" onSubmit={salvarTicket}>
                     <Modal.Body>
-                        <div className="mb-4 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                        <div className="mb-4 overflow-x-auto border-b border-slate-200 pb-3">
+                            <div className="flex min-w-max gap-2">
                             <button
                                 type="button"
                                 className={obterClassesAba("informacoesGerais")}
@@ -632,6 +633,7 @@ export default function ModalDetalheTicket({
                             >
                                 Chat
                             </button>
+                            </div>
                         </div>
 
                         {abaAtiva === "informacoesGerais" && (
@@ -694,7 +696,7 @@ export default function ModalDetalheTicket({
                         )}
 
                         {abaAtiva === "chat" && (
-                            <div className="flex h-[86vh] min-h-[42rem] max-h-[64rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                            <div className="flex max-h-[70vh] min-h-[28rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50 md:h-[70vh] md:min-h-[42rem] md:max-h-[64rem]">
                                 <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                                     {mensagens.length === 0 && (
                                         <div className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
@@ -765,8 +767,8 @@ export default function ModalDetalheTicket({
                                             {anexosNovaMensagem.length > 0 && (
                                                 <div className="mt-2 space-y-2">
                                                     {anexosNovaMensagem.map((anexo, indice) => (
-                                                        <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                            <span className="truncate">{anexo.name}</span>
+                                                        <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                            <span className="min-w-0 truncate">{anexo.name}</span>
                                                             <button
                                                                 type="button"
                                                                 className="font-semibold text-red-600 hover:text-red-700"
@@ -793,7 +795,7 @@ export default function ModalDetalheTicket({
                                             loading={carregando}
                                             variant="outline-primary"
                                             type="button"
-                                            className=""
+                                            className="w-full sm:w-auto"
                                         />
                                     </div>
                                 </div>
@@ -801,9 +803,9 @@ export default function ModalDetalheTicket({
                         )}
                     </Modal.Body>
 
-                    <Modal.Footer>
-                        <Botao size="sm" label="Cancelar" icon={<FaTimes />} onClick={aoFechar} disabled={carregando} loading={false} variant="outline-secondary" type="button" className="" />
-                        <Botao size="sm" label="Salvar ticket" icon={<FaSave />} onClick={() => undefined} disabled={carregando || (!podeEditarInformacoesGerais && !podeEditarStatus)} loading={carregando} variant="outline-primary" type="submit" className="" />
+                    <Modal.Footer className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+                        <Botao size="sm" label="Cancelar" icon={<FaTimes />} onClick={aoFechar} disabled={carregando} loading={false} variant="outline-secondary" type="button" className="w-full sm:w-auto" />
+                        <Botao size="sm" label="Salvar ticket" icon={<FaSave />} onClick={() => undefined} disabled={carregando || (!podeEditarInformacoesGerais && !podeEditarStatus)} loading={carregando} variant="outline-primary" type="submit" className="w-full sm:w-auto" />
                     </Modal.Footer>
                 </form>
             </Modal>

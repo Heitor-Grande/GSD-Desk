@@ -504,7 +504,8 @@ export default function ModalCadastroTicket({
 
                 <form id="formulario-cadastro-ticket" onSubmit={salvarTicket}>
                     <Modal.Body>
-                        <div className="mb-4 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                        <div className="mb-4 overflow-x-auto border-b border-slate-200 pb-3">
+                            <div className="flex min-w-max gap-2">
                             <button
                                 type="button"
                                 className={obterClassesAba("informacoesGerais")}
@@ -519,6 +520,7 @@ export default function ModalCadastroTicket({
                             >
                                 Chat
                             </button>
+                            </div>
                         </div>
 
                         {abaAtiva === "informacoesGerais" && (
@@ -742,8 +744,8 @@ export default function ModalCadastroTicket({
                                             {anexosMensagemInicial.length > 0 && (
                                                 <div className="mt-2 space-y-2">
                                                     {anexosMensagemInicial.map((anexo, indice) => (
-                                                        <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                                                            <span className="truncate">{anexo.name}</span>
+                                                        <div key={`${anexo.name}-${anexo.lastModified}-${indice}`} className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                                            <span className="min-w-0 truncate">{anexo.name}</span>
                                                             <button
                                                                 type="button"
                                                                 className="font-semibold text-red-600 hover:text-red-700"
@@ -763,7 +765,7 @@ export default function ModalCadastroTicket({
                         )}
                     </Modal.Body>
 
-                    <Modal.Footer>
+                    <Modal.Footer className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                         <Botao
                             size="sm"
                             label="Cancelar"
@@ -773,7 +775,7 @@ export default function ModalCadastroTicket({
                             loading={false}
                             variant="outline-secondary"
                             type="button"
-                            className=""
+                            className="w-full sm:w-auto"
                         />
 
                         <Botao
@@ -785,7 +787,7 @@ export default function ModalCadastroTicket({
                             loading={carregando}
                             variant="outline-primary"
                             type="submit"
-                            className=""
+                            className="w-full sm:w-auto"
                         />
                     </Modal.Footer>
                 </form>

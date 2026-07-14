@@ -344,6 +344,7 @@ export default function ModalCadastroUsuario({
                 onExited={limparEstadoModalCadastroUsuario}
                 centered
                 size="lg"
+                contentClassName="overflow-hidden"
             >
                 <Modal.Header closeButton>
                     <Modal.Title className="text-lg font-bold">
@@ -351,10 +352,10 @@ export default function ModalCadastroUsuario({
                     </Modal.Title>
                 </Modal.Header>
 
-                <form onSubmit={cadastrarUsuario}>
-                    <Modal.Body>
-                        <div className="grid gap-4 md:grid-cols-12">
-                            <div className="md:col-span-6">
+                <form onSubmit={cadastrarUsuario} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <Modal.Body className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
+                        <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-12">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="usuario-nome"
                                     label="Nome"
@@ -368,7 +369,7 @@ export default function ModalCadastroUsuario({
                                 />
                             </div>
 
-                            <div className="md:col-span-6">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="usuario-email"
                                     label="E-mail"
@@ -382,7 +383,7 @@ export default function ModalCadastroUsuario({
                                 />
                             </div>
 
-                            <div className="md:col-span-6">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="usuario-telefone"
                                     label="Telefone"
@@ -396,7 +397,7 @@ export default function ModalCadastroUsuario({
                                 />
                             </div>
 
-                            <div className="md:col-span-6">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="usuario-documento"
                                     label="Documento"
@@ -410,7 +411,7 @@ export default function ModalCadastroUsuario({
                                 />
                             </div>
 
-                            <div className="md:col-span-6">
+                            <div className="min-w-0 md:col-span-6">
                                 <Seletor
                                     id="usuario-perfil"
                                     label="Perfil"
@@ -424,8 +425,8 @@ export default function ModalCadastroUsuario({
                                 />
                             </div>
 
-                            <div className="md:col-span-3">
-                                <div className="mt-7 flex items-center gap-3">
+                            <div className="min-w-0 md:col-span-3">
+                                <div className="flex min-h-10 items-center gap-3 md:mt-7">
                                     <input
                                         id="usuario-ativo"
                                         className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
@@ -434,14 +435,14 @@ export default function ModalCadastroUsuario({
                                         disabled={carregando || usuarioAdministradorSelecionado}
                                         onChange={(event) => atualizarCampoFormulario("ativo", event.target.checked)}
                                     />
-                                    <label className="text-sm font-semibold text-slate-700" htmlFor="usuario-ativo">
+                                    <label className="break-words text-sm font-semibold text-slate-700" htmlFor="usuario-ativo">
                                         Usuário ativo
                                     </label>
                                 </div>
                             </div>
 
-                            <div className="md:col-span-3">
-                                <div className="mt-7 flex items-center gap-3">
+                            <div className="min-w-0 md:col-span-3">
+                                <div className="flex min-h-10 items-center gap-3 md:mt-7">
                                     <input
                                         id="usuario-admin"
                                         className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
@@ -450,13 +451,13 @@ export default function ModalCadastroUsuario({
                                         disabled
                                         readOnly
                                     />
-                                    <label className="text-sm font-semibold text-slate-700" htmlFor="usuario-admin">
+                                    <label className="break-words text-sm font-semibold text-slate-700" htmlFor="usuario-admin">
                                         Administrador
                                     </label>
                                 </div>
                             </div>
 
-                            <div className="md:col-span-6">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="usuario-criado-em"
                                     label="Criado em"
@@ -470,7 +471,7 @@ export default function ModalCadastroUsuario({
                                 />
                             </div>
 
-                            <div className="md:col-span-6">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="usuario-atualizado-em"
                                     label="Atualizado em"
@@ -484,7 +485,7 @@ export default function ModalCadastroUsuario({
                                 />
                             </div>
 
-                            <div className="md:col-span-6">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="usuario-senha"
                                     label={estaVisualizandoUsuario ? "Nova senha" : "Senha"}
@@ -500,7 +501,7 @@ export default function ModalCadastroUsuario({
                                 />
                             </div>
 
-                            <div className="md:col-span-6">
+                            <div className="min-w-0 md:col-span-6">
                                 <CampoTexto
                                     id="usuario-confirmar-senha"
                                     label={estaVisualizandoUsuario ? "Confirmar nova senha" : "Confirmar senha"}
@@ -515,7 +516,7 @@ export default function ModalCadastroUsuario({
                             </div>
 
                             {estaVisualizandoUsuario && (
-                                <div className="md:col-span-12">
+                                <div className="min-w-0 md:col-span-12">
                                     <VinculoUsuarioEmpresa
                                         form="usuario"
                                         idUsuario={idUsuario}
@@ -527,7 +528,7 @@ export default function ModalCadastroUsuario({
                         </div>
                     </Modal.Body>
 
-                    <Modal.Footer>
+                    <Modal.Footer className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                         {estaVisualizandoUsuario && (
                             <Botao
                                 size="sm"
@@ -538,7 +539,7 @@ export default function ModalCadastroUsuario({
                                 loading={false}
                                 variant="outline-danger"
                                 type="button"
-                                className="mr-auto"
+                                className="w-full sm:mr-auto sm:w-auto"
                             />
                         )}
 
@@ -551,7 +552,7 @@ export default function ModalCadastroUsuario({
                             loading={false}
                             variant="outline-secondary"
                             type="button"
-                            className=""
+                            className="w-full sm:w-auto"
                         />
 
                         <Botao
@@ -563,7 +564,7 @@ export default function ModalCadastroUsuario({
                             loading={carregando}
                             variant="outline-primary"
                             type="submit"
-                            className=""
+                            className="w-full sm:w-auto"
                         />
                     </Modal.Footer>
                 </form>

@@ -380,7 +380,7 @@ export default function PaginaMinhaConta() {
                                 loading={carregando}
                                 variant="outline-primary"
                                 type="submit"
-                                className=""
+                                className="w-full sm:w-auto"
                             />
                         </div>
                     </div>

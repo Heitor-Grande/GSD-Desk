@@ -304,7 +304,7 @@ export default function ProdutosEmpresa({
         <section className="space-y-4">
             <div className={`rounded-xl border bg-white p-4 shadow-sm transition ${isEditandoProduto ? "border-blue-300 shadow-blue-100/70" : "border-slate-200"}`}>
                 <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
+                    <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                             <h3 className="text-base font-bold text-slate-900">
                                 {isEditandoProduto ? "Editar produto" : "Novo produto"}
@@ -315,7 +315,7 @@ export default function ProdutosEmpresa({
                                 </span>
                             )}
                         </div>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 break-words text-sm text-slate-500">
                             {isEditandoProduto
                                 ? `Editando ${produtoSelecionado?.nome || "produto selecionado"}. Salve a edição ou cancele para voltar ao cadastro.`
                                 : "Cadastre produtos vinculados somente à empresa atual."}
@@ -430,7 +430,7 @@ export default function ProdutosEmpresa({
                                         disabled={carregando}
                                     >
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <p className="text-sm font-semibold text-slate-900">{produto.nome}</p>
+                                            <p className="min-w-0 break-words text-sm font-semibold text-slate-900">{produto.nome}</p>
                                             <span className={`rounded-full px-2 py-1 text-xs font-semibold ${produto.ativo ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700"}`}>
                                                 {produto.ativo ? "Ativo" : "Inativo"}
                                             </span>
@@ -440,7 +440,7 @@ export default function ProdutosEmpresa({
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="mt-1 text-sm text-slate-500">
+                                        <p className="mt-1 break-words text-sm text-slate-500">
                                             {produto.descricao || "Sem descrição."}
                                         </p>
                                     </button>

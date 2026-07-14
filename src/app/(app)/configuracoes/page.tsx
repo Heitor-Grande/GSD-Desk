@@ -351,7 +351,7 @@ export default function PaginaConfiguracoes() {
                                 loading={false}
                                 variant="outline-primary"
                                 type="submit"
-                                className=""
+                                className="w-full sm:w-auto"
                             />
                         </div>
                     </div>

@@ -231,7 +231,7 @@ export default function ModalRecSenha({
                         </Modal.Body>
 
                         <Modal.Footer className="border-0 px-5 pb-5 pt-0">
-                            <div className="flex w-full gap-2">
+                            <div className="flex w-full flex-col-reverse gap-2 sm:flex-row">
                                 <Botao
                                     size="sm"
                                     label="Cancelar"
@@ -293,7 +293,7 @@ export default function ModalRecSenha({
                         </Modal.Body>
 
                         <Modal.Footer className="border-0 px-5 pb-5 pt-0">
-                            <div className="flex w-full gap-2">
+                            <div className="flex w-full flex-col-reverse gap-2 sm:flex-row">
                                 <Botao
                                     size="sm"
                                     label="Cancelar"
@@ -370,7 +370,7 @@ export default function ModalRecSenha({
                         </Modal.Body>
 
                         <Modal.Footer className="border-0 px-5 pb-5 pt-0">
-                            <div className="flex w-full gap-2">
+                            <div className="flex w-full flex-col-reverse gap-2 sm:flex-row">
                                 <Botao
                                     size="sm"
                                     label="Cancelar"

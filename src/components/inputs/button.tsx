@@ -53,7 +53,7 @@ export function Botao({
     };
 
     const classesBase = [
-        "inline-flex cursor-pointer items-center justify-center rounded-lg border font-semibold leading-none transition",
+        "inline-flex min-w-0 cursor-pointer items-center justify-center rounded-lg border text-center font-semibold leading-tight transition",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
         "disabled:cursor-not-allowed disabled:opacity-60",
         classesPorTamanho[size],
@@ -70,10 +70,10 @@ export function Botao({
             aria-label={ariaLabel}
             form={form}
         >
-            <span className="inline-flex w-full items-center justify-center gap-2">
-                {icon && <span className="inline-flex items-center">{icon}</span>}
-                {label && <span>{label}</span>}
-                {iconRight && <span className="ml-auto inline-flex items-center">{iconRight}</span>}
+            <span className="inline-flex min-w-0 w-full items-center justify-center gap-2">
+                {icon && <span className="inline-flex shrink-0 items-center">{icon}</span>}
+                {label && <span className="min-w-0 break-words">{label}</span>}
+                {iconRight && <span className="ml-auto inline-flex shrink-0 items-center">{iconRight}</span>}
             </span>
         </button>
     );
