@@ -694,14 +694,8 @@ export async function PUT(request: NextRequest) {
             return criarRespostaApi(false, "Ticket não encontrado para a empresa selecionada.", null, 404);
         }
 
-        const responsavelAlterado = responsavelId !== validacao.responsavel_atual_id;
-        const agenteAlterado = agenteId !== validacao.agente_atual_id;
         const statusAlterado = status !== (validacao.status_atual ?? "");
         const prioridadeAlterada = prioridade !== (validacao.prioridade_atual ?? "");
-
-        if (responsavelAlterado && !validacao.usuario_pode_editar_responsavel) {
-            return criarRespostaApi(false, "Agente de Suporte não pode alterar o responsável do ticket.", null, 403);
-        }
 
         if (statusAlterado && !validacao.usuario_pode_editar_status) {
             return criarRespostaApi(false, "Você não possui permissão para alterar o status do ticket.", null, 403);
