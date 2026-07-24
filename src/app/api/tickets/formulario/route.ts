@@ -91,7 +91,6 @@ export async function GET(request: NextRequest) {
                 inner join usuarios u on u.id = ue.usuario_id
                 where ue.usuario_id = $1
                     and e.ativo = true
-                    and e.superior_id is not null
                 order by
                     u.empresa_padrao = e.id desc,
                     e.fantasia asc
