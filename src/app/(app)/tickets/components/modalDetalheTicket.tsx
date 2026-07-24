@@ -608,6 +608,7 @@ export default function ModalDetalheTicket({
                 onExited={limparEstado}
                 centered
                 size="xl"
+                contentClassName="overflow-hidden"
             >
                 <Modal.Header closeButton>
                     <Modal.Title className="text-lg font-bold">
@@ -615,8 +616,8 @@ export default function ModalDetalheTicket({
                     </Modal.Title>
                 </Modal.Header>
 
-                <form id="formulario-detalhe-ticket" onSubmit={salvarTicket}>
-                    <Modal.Body>
+                <form id="formulario-detalhe-ticket" onSubmit={salvarTicket} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <Modal.Body className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
                         <div className="mb-4 overflow-x-auto border-b border-slate-200 pb-3">
                             <div className="flex min-w-max gap-2">
                             <button
@@ -696,7 +697,7 @@ export default function ModalDetalheTicket({
                         )}
 
                         {abaAtiva === "chat" && (
-                            <div className="flex max-h-[70vh] min-h-[28rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50 md:h-[70vh] md:min-h-[42rem] md:max-h-[64rem]">
+                            <div className="flex min-h-[24rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
                                 <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                                     {mensagens.length === 0 && (
                                         <div className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">

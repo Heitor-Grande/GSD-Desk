@@ -495,6 +495,7 @@ export default function ModalCadastroTicket({
                 onExited={limparEstadoModalCadastroTicket}
                 centered
                 size="xl"
+                contentClassName="overflow-hidden"
             >
                 <Modal.Header closeButton>
                     <Modal.Title className="text-lg font-bold">
@@ -502,8 +503,8 @@ export default function ModalCadastroTicket({
                     </Modal.Title>
                 </Modal.Header>
 
-                <form id="formulario-cadastro-ticket" onSubmit={salvarTicket}>
-                    <Modal.Body>
+                <form id="formulario-cadastro-ticket" onSubmit={salvarTicket} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <Modal.Body className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
                         <div className="mb-4 overflow-x-auto border-b border-slate-200 pb-3">
                             <div className="flex min-w-max gap-2">
                             <button
