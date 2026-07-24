@@ -378,8 +378,9 @@ export async function GET(request: NextRequest) {
                         $3::bigint as usuario_logado_id,
                         t.responsavel_id <> $3 as usuario_pode_editar_informacoes_gerais,
                         (
-                            t.responsavel_id <> $3
-                            and lower(coalesce(perfil_usuario_logado.nome, '')) <> 'agente de suporte'
+                            t.responsavel_id = $3
+                            OR 
+                            lower(coalesce(perfil_usuario_logado.nome, '')) = 'cliente manager'
                         ) as usuario_pode_editar_responsavel,
                         (
                             t.responsavel_id <> $3
@@ -606,7 +607,6 @@ export async function PUT(request: NextRequest) {
                             left join perfil p on p.id = u.perfil_id
                             where u.id = $5
                                 and u.ativo = true
-                                and lower(coalesce(p.nome, '')) <> 'agente de suporte'
                         )
                     ) as usuario_pode_editar_responsavel,
                     (
