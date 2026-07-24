@@ -157,7 +157,6 @@ export async function GET(request: NextRequest) {
                         e.cnpj
                     from empresas e
                     where e.ativo = true
-                        and e.superior_id is not null
                         and exists (
                             select 1
                             from usuarios_empresas ue_usuario_logado
