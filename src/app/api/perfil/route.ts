@@ -206,6 +206,7 @@ export async function POST(request: NextRequest) {
 
         return criarRespostaApi(true, "Perfil cadastrado com sucesso.", null, 201);
     } catch (erro) {
+        console.log(erro)
         if (erro instanceof SyntaxError) {
             return criarRespostaApi(false, "Requisição inválida.", null, 400);
         }
