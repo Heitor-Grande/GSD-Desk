@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
         const respostaPermissao = await verificarPermissaoAPI({
             request: request,
             recurso: "ticket",
-            acao: "criar",
+            acao: "visualizar",
         });
 
         if (respostaPermissao) {
