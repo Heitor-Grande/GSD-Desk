@@ -199,11 +199,16 @@ export default function BarraLateral({
 
     function fecharBarraLateral() {
 
-        if(telaMobile === true){
-            
+        aoFechar();
+    }
+
+    function fecharBarraLateralMobileClick() {
+
+        if (telaMobile) {
             aoFechar();
         }
     }
+
 
     /**
      * Atualiza a empresa de navegação no estado local e persiste a escolha para as próximas telas.
@@ -378,7 +383,7 @@ export default function BarraLateral({
                         <ItemMenuLateral
                             key={item.label}
                             item={item}
-                            aoNavegar={fecharBarraLateral}
+                            aoNavegar={fecharBarraLateralMobileClick}
                         />
                     ))}
                 </nav>

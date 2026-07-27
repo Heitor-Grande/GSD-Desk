@@ -19,6 +19,7 @@ type TicketMensagemContexto = {
     agente_email: string | null;
     status: string;
     suporte_visualiza_apenas_tickets_proprios: boolean;
+    cliente_visualiza_apenas_tickets_proprios: boolean;
     perfil_nome: string | null;
 };
 
@@ -259,6 +260,7 @@ export async function POST(request: NextRequest) {
                     agente.email as agente_email,
                     t.status,
                     e.suporte_visualiza_apenas_tickets_proprios,
+                    e.cliente_visualiza_apenas_tickets_proprios,
                     p.nome as perfil_nome
                 from tickets t
                 inner join empresas e on e.id = t.empresa_id

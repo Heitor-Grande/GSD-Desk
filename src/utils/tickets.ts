@@ -8,6 +8,7 @@ export type TicketParaValidarVisualizacao = {
 
 export type ContextoVisualizacaoTicket = {
     suporte_visualiza_apenas_tickets_proprios: boolean;
+    cliente_visualiza_apenas_tickets_proprios: boolean;
     perfil_nome: string | null;
 };
 
@@ -52,6 +53,11 @@ export function usuarioPodeVisualizarTicket({
         return contexto.suporte_visualiza_apenas_tickets_proprios == false
             || agenteId === idUsuario
             || ticket.status === STATUS_INICIAL_TICKET;
+    }
+
+    //se regra da empresa permitir que clientes visualizem tickets de outros clientes
+    if (contexto.cliente_visualiza_apenas_tickets_proprios == false) {
+        return true;
     }
 
     //se usuario for cliente manager

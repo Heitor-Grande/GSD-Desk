@@ -102,6 +102,7 @@ type AnexoMensagemTicketDetalhe = {
 
 type ContextoListagemTicket = {
     suporte_visualiza_apenas_tickets_proprios: boolean;
+    cliente_visualiza_apenas_tickets_proprios: boolean;
     perfil_nome: string | null;
 };
 
@@ -329,6 +330,7 @@ export async function GET(request: NextRequest) {
             `
                 select
                     e.suporte_visualiza_apenas_tickets_proprios,
+                    e.cliente_visualiza_apenas_tickets_proprios,
                     p.nome as perfil_nome
                 from empresas e
                 inner join usuarios u on u.id = $2

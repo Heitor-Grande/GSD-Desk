@@ -13,6 +13,7 @@ type ContextoTicketAnexo = {
     agente_id: number | null;
     status: string;
     suporte_visualiza_apenas_tickets_proprios: boolean;
+    cliente_visualiza_apenas_tickets_proprios: boolean;
     perfil_nome: string | null;
 };
 
@@ -90,6 +91,7 @@ export async function GET(request: NextRequest) {
                     t.agente_id,
                     t.status,
                     e.suporte_visualiza_apenas_tickets_proprios,
+                    e.cliente_visualiza_apenas_tickets_proprios,
                     p.nome as perfil_nome
                 from tickets t
                 inner join empresas e on e.id = t.empresa_id
