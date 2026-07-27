@@ -42,6 +42,7 @@ type CadastroEmpresaBody = {
     superior_id?: unknown;
     exigirVinculoProduto?: unknown;
     suporteVisualizaApenasTicketsProprios?: unknown;
+    clienteVisualizaApenasTicketsProprios?: unknown;
 };
 
 function normalizarCnpj(valor: unknown): string {
@@ -456,6 +457,10 @@ export async function POST(request: NextRequest) {
             ? body.suporteVisualizaApenasTicketsProprios
             : true;
 
+        const clienteVisualizaApenasTicketsProprios = typeof body.clienteVisualizaApenasTicketsProprios === "boolean"
+            ? body.clienteVisualizaApenasTicketsProprios
+            : true;
+
         if (!fantasia || fantasia.length > 160 || cnpj.length !== 14) {
             return criarRespostaApi(false, "Informe nome da empresa e CNPJ com 14 dígitos.", null, 400);
         }
@@ -488,9 +493,10 @@ export async function POST(request: NextRequest) {
                     superior_id,
                     exigir_vinculo_produto,
                     suporte_visualiza_apenas_tickets_proprios,
+                    cliente_visualiza_apenas_tickets_proprios,
                     criado_por
                 )
-                values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 returning id,
                     fantasia,
                     cnpj,
@@ -503,7 +509,7 @@ export async function POST(request: NextRequest) {
                     criado_em,
                     atualizado_em
             `,
-            [fantasia, cnpj, email, telefone, ativo, superiorId, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, idUsuario]
+            [fantasia, cnpj, email, telefone, ativo, superiorId, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, clienteVisualizaApenasTicketsProprios, idUsuario]
         );
 
         await consultarBancoDados(
@@ -583,6 +589,9 @@ export async function PUT(request: NextRequest) {
         const suporteVisualizaApenasTicketsProprios = typeof body.suporteVisualizaApenasTicketsProprios === "boolean"
             ? body.suporteVisualizaApenasTicketsProprios
             : true;
+        const clienteVisualizaApenasTicketsProprios = typeof body.clienteVisualizaApenasTicketsProprios === "boolean"
+            ? body.clienteVisualizaApenasTicketsProprios
+            : true;
 
         if (!Number.isInteger(id) || id <= 0) {
             return criarRespostaApi(false, "Informe uma empresa válida para atualização.", null, 400);
@@ -643,9 +652,10 @@ export async function PUT(request: NextRequest) {
                     superior_id = $6,
                     exigir_vinculo_produto = $7,
                     suporte_visualiza_apenas_tickets_proprios = $8,
-                    atualizado_por = $9,
+                    cliente_visualiza_apenas_tickets_proprios = $9,
+                    atualizado_por = $10,
                     atualizado_em = now()
-                where id = $10
+                where id = $11
                 returning id,
                     fantasia,
                     cnpj,
@@ -655,10 +665,11 @@ export async function PUT(request: NextRequest) {
                     superior_id,
                     exigir_vinculo_produto,
                     suporte_visualiza_apenas_tickets_proprios,
+                    cliente_visualiza_apenas_tickets_proprios,
                     criado_em,
                     atualizado_em
             `,
-            [fantasia, cnpj, email, telefone, ativo, superiorId, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, idUsuario, id]
+            [fantasia, cnpj, email, telefone, ativo, superiorId, exigirVinculoProduto, suporteVisualizaApenasTicketsProprios, clienteVisualizaApenasTicketsProprios, idUsuario, id]
         );
 
         if (!resultado.rows[0]) {

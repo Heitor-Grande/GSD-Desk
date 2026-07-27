@@ -23,6 +23,7 @@ type DadosCadastroEmpresa = {
     superior: OpcaoSeletor | null;
     exigirVinculoProduto: boolean;
     suporteVisualizaApenasTicketsProprios: boolean;
+    clienteVisualizaApenasTicketsProprios: boolean;
     criadoEm: string;
     atualizadoEm: string;
 };
@@ -38,6 +39,7 @@ type EmpresaDetalhadaApi = {
     superior_fantasia?: string | null;
     exigir_vinculo_produto: boolean;
     suporte_visualiza_apenas_tickets_proprios: boolean;
+    cliente_visualiza_apenas_tickets_proprios: boolean;
     criado_em: string;
     atualizado_em: string;
 };
@@ -69,7 +71,8 @@ const estadoInicialFormulario: DadosCadastroEmpresa = {
     ativo: true,
     superior: null,
     exigirVinculoProduto: false,
-    suporteVisualizaApenasTicketsProprios: true,
+    suporteVisualizaApenasTicketsProprios: false,
+    clienteVisualizaApenasTicketsProprios: false,
     criadoEm: "",
     atualizadoEm: "",
 };
@@ -116,6 +119,7 @@ function mapearEmpresaParaFormulario(empresa: EmpresaDetalhadaApi): DadosCadastr
             : null,
         exigirVinculoProduto: empresa.exigir_vinculo_produto,
         suporteVisualizaApenasTicketsProprios: empresa.suporte_visualiza_apenas_tickets_proprios,
+        clienteVisualizaApenasTicketsProprios: empresa.cliente_visualiza_apenas_tickets_proprios,
         criadoEm: formatarDataHoraFormulario(empresa.criado_em),
         atualizadoEm: formatarDataHoraFormulario(empresa.atualizado_em),
     };
@@ -234,6 +238,7 @@ export default function ModalCadastroEmpresa({
                     superiorId: formulario.superior?.value ? Number(formulario.superior.value) : null,
                     exigirVinculoProduto: formulario.exigirVinculoProduto,
                     suporteVisualizaApenasTicketsProprios: formulario.suporteVisualizaApenasTicketsProprios,
+                    clienteVisualizaApenasTicketsProprios: formulario.clienteVisualizaApenasTicketsProprios,
                 },
             });
 
@@ -329,153 +334,153 @@ export default function ModalCadastroEmpresa({
                 <Modal.Body>
                     <div className="mb-4 overflow-x-auto border-b border-slate-200 pb-3">
                         <div className="flex min-w-max gap-2">
-                        <button
-                            type="button"
-                            className={obterClassesAba("dados")}
-                            onClick={() => setAbaAtiva("dados")}
-                        >
-                            Dados da empresa
-                        </button>
-                        <button
-                            type="button"
-                            className={obterClassesAba("usuarios")}
-                            onClick={() => setAbaAtiva("usuarios")}
-                        >
-                            Usuários vinculados
-                        </button>
-                        <button
-                            type="button"
-                            className={obterClassesAba("produtos")}
-                            onClick={() => setAbaAtiva("produtos")}
-                        >
-                            Produtos
-                        </button>
-                        <button
-                            type="button"
-                            className={obterClassesAba("regras")}
-                            onClick={() => setAbaAtiva("regras")}
-                        >
-                            Regras
-                        </button>
+                            <button
+                                type="button"
+                                className={obterClassesAba("dados")}
+                                onClick={() => setAbaAtiva("dados")}
+                            >
+                                Dados da empresa
+                            </button>
+                            <button
+                                type="button"
+                                className={obterClassesAba("usuarios")}
+                                onClick={() => setAbaAtiva("usuarios")}
+                            >
+                                Usuários vinculados
+                            </button>
+                            <button
+                                type="button"
+                                className={obterClassesAba("produtos")}
+                                onClick={() => setAbaAtiva("produtos")}
+                            >
+                                Produtos
+                            </button>
+                            <button
+                                type="button"
+                                className={obterClassesAba("regras")}
+                                onClick={() => setAbaAtiva("regras")}
+                            >
+                                Regras
+                            </button>
                         </div>
                     </div>
 
                     {abaAtiva === "dados" && (
                         <form id="formulario-cadastro-empresa" onSubmit={cadastrarEmpresa}>
                             <div className="grid gap-4 md:grid-cols-12">
-                            <div className="md:col-span-6">
-                                <CampoTexto
-                                    id="empresa-fantasia"
-                                    label="Nome"
-                                    type="text"
-                                    value={formulario.fantasia}
-                                    placeholder="Nome fantasia da empresa"
-                                    onChange={(event) => atualizarCampoFormulario("fantasia", event.target.value)}
-                                    disabled={carregando}
-                                    required
-                                    className="mb-0"
-                                />
-                            </div>
-
-                            <div className="md:col-span-6">
-                                <CampoTexto
-                                    id="empresa-cnpj"
-                                    label="CNPJ"
-                                    type="text"
-                                    value={formulario.cnpj}
-                                    placeholder="00.000.000/0000-00"
-                                    onChange={(event) => atualizarCampoFormulario("cnpj", event.target.value)}
-                                    disabled={carregando}
-                                    required
-                                    className="mb-0"
-                                />
-                            </div>
-
-                            <div className="md:col-span-6">
-                                <CampoTexto
-                                    id="empresa-email"
-                                    label="E-mail"
-                                    type="email"
-                                    value={formulario.email}
-                                    placeholder="contato@empresa.com"
-                                    onChange={(event) => atualizarCampoFormulario("email", event.target.value)}
-                                    disabled={carregando}
-                                    required={false}
-                                    className="mb-0"
-                                />
-                            </div>
-
-                            <div className="md:col-span-6">
-                                <CampoTexto
-                                    id="empresa-telefone"
-                                    label="Telefone"
-                                    type="tel"
-                                    value={formulario.telefone}
-                                    placeholder="(00) 00000-0000"
-                                    onChange={(event) => atualizarCampoFormulario("telefone", event.target.value)}
-                                    disabled={carregando}
-                                    required={false}
-                                    className="mb-0"
-                                />
-                            </div>
-
-                            <div className="md:col-span-6">
-                                <Seletor
-                                    id="empresa-superior"
-                                    label="Superior"
-                                    options={opcoesSuperior}
-                                    value={formulario.superior}
-                                    onChange={(opcao) => atualizarCampoFormulario("superior", opcao)}
-                                    placeholder="Selecione..."
-                                    isDisabled={carregando}
-                                    isClearable={false}
-                                    className="mb-0"
-                                />
-                            </div>
-
-                            <div className="md:col-span-12">
-                                <div className="flex items-center gap-3">
-                                    <input
-                                        id="empresa-ativo"
-                                        className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                                        type="checkbox"
-                                        checked={formulario.ativo}
+                                <div className="md:col-span-6">
+                                    <CampoTexto
+                                        id="empresa-fantasia"
+                                        label="Nome"
+                                        type="text"
+                                        value={formulario.fantasia}
+                                        placeholder="Nome fantasia da empresa"
+                                        onChange={(event) => atualizarCampoFormulario("fantasia", event.target.value)}
                                         disabled={carregando}
-                                        onChange={(event) => atualizarCampoFormulario("ativo", event.target.checked)}
+                                        required
+                                        className="mb-0"
                                     />
-                                    <label className="text-sm font-semibold text-slate-700" htmlFor="empresa-ativo">
-                                        Empresa ativa
-                                    </label>
                                 </div>
-                            </div>
 
-                            <div className="md:col-span-6">
-                                <CampoTexto
-                                    id="empresa-criado-em"
-                                    label="Criado em"
-                                    type="text"
-                                    value={formulario.criadoEm}
-                                    placeholder="Gerado automaticamente"
-                                    onChange={() => undefined}
-                                    disabled
-                                    required={false}
-                                    className="mb-0"
-                                />
-                            </div>
+                                <div className="md:col-span-6">
+                                    <CampoTexto
+                                        id="empresa-cnpj"
+                                        label="CNPJ"
+                                        type="text"
+                                        value={formulario.cnpj}
+                                        placeholder="00.000.000/0000-00"
+                                        onChange={(event) => atualizarCampoFormulario("cnpj", event.target.value)}
+                                        disabled={carregando}
+                                        required
+                                        className="mb-0"
+                                    />
+                                </div>
 
-                            <div className="md:col-span-6">
-                                <CampoTexto
-                                    id="empresa-atualizado-em"
-                                    label="Atualizado em"
-                                    type="text"
-                                    value={formulario.atualizadoEm}
-                                    placeholder="Gerado automaticamente"
-                                    onChange={() => undefined}
-                                    disabled
-                                    required={false}
-                                    className="mb-0"
-                                />
-                            </div>
+                                <div className="md:col-span-6">
+                                    <CampoTexto
+                                        id="empresa-email"
+                                        label="E-mail"
+                                        type="email"
+                                        value={formulario.email}
+                                        placeholder="contato@empresa.com"
+                                        onChange={(event) => atualizarCampoFormulario("email", event.target.value)}
+                                        disabled={carregando}
+                                        required={false}
+                                        className="mb-0"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-6">
+                                    <CampoTexto
+                                        id="empresa-telefone"
+                                        label="Telefone"
+                                        type="tel"
+                                        value={formulario.telefone}
+                                        placeholder="(00) 00000-0000"
+                                        onChange={(event) => atualizarCampoFormulario("telefone", event.target.value)}
+                                        disabled={carregando}
+                                        required={false}
+                                        className="mb-0"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-6">
+                                    <Seletor
+                                        id="empresa-superior"
+                                        label="Superior"
+                                        options={opcoesSuperior}
+                                        value={formulario.superior}
+                                        onChange={(opcao) => atualizarCampoFormulario("superior", opcao)}
+                                        placeholder="Selecione..."
+                                        isDisabled={carregando}
+                                        isClearable={false}
+                                        className="mb-0"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-12">
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            id="empresa-ativo"
+                                            className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                            type="checkbox"
+                                            checked={formulario.ativo}
+                                            disabled={carregando}
+                                            onChange={(event) => atualizarCampoFormulario("ativo", event.target.checked)}
+                                        />
+                                        <label className="text-sm font-semibold text-slate-700" htmlFor="empresa-ativo">
+                                            Empresa ativa
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-6">
+                                    <CampoTexto
+                                        id="empresa-criado-em"
+                                        label="Criado em"
+                                        type="text"
+                                        value={formulario.criadoEm}
+                                        placeholder="Gerado automaticamente"
+                                        onChange={() => undefined}
+                                        disabled
+                                        required={false}
+                                        className="mb-0"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-6">
+                                    <CampoTexto
+                                        id="empresa-atualizado-em"
+                                        label="Atualizado em"
+                                        type="text"
+                                        value={formulario.atualizadoEm}
+                                        placeholder="Gerado automaticamente"
+                                        onChange={() => undefined}
+                                        disabled
+                                        required={false}
+                                        className="mb-0"
+                                    />
+                                </div>
                             </div>
                         </form>
                     )}
@@ -561,6 +566,32 @@ export default function ModalCadastroEmpresa({
                                     </div>
                                 </div>
                             </div>
+
+                            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <div className="flex items-start gap-3">
+                                    <input
+                                        id="empresa-suporte-tickets-proprios"
+                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                        type="checkbox"
+                                        checked={formulario.clienteVisualizaApenasTicketsProprios}
+                                        disabled={carregando}
+                                        onChange={(event) => atualizarCampoFormulario("clienteVisualizaApenasTicketsProprios", event.target.checked)}
+                                    />
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <label className="text-sm font-semibold text-slate-800" htmlFor="empresa-suporte-tickets-proprios">
+                                                Cliente visualiza apenas os seus próprios tickets
+                                            </label>
+                                            <span
+                                                className="inline-flex cursor-help text-slate-500"
+                                                title="Quando habilitado, os usuários(clientes) devem visualizar apenas tickets em que são responsáveis, não podendo visualizar tickets de outros clientes da empresa."
+                                            >
+                                                <FaInfoCircle aria-hidden="true" />
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </Modal.Body>
@@ -568,48 +599,48 @@ export default function ModalCadastroEmpresa({
                 <Modal.Footer className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                     {abaAtiva === "dados" || abaAtiva === "regras" ? (
                         <>
-                        {estaVisualizandoEmpresa && (
+                            {estaVisualizandoEmpresa && (
+                                <Botao
+                                    size="sm"
+                                    label="Excluir"
+                                    icon={<FaTrash />}
+                                    onClick={() => setModalConfirmacaoExclusaoAberto(true)}
+                                    disabled={carregando}
+                                    loading={false}
+                                    variant="outline-danger"
+                                    type="button"
+                                    className="w-full sm:mr-auto sm:w-auto"
+                                />
+                            )}
+
                             <Botao
                                 size="sm"
-                                label="Excluir"
-                                icon={<FaTrash />}
-                                onClick={() => setModalConfirmacaoExclusaoAberto(true)}
+                                label="Cancelar"
+                                icon={<FaTimes />}
+                                onClick={fecharModalCadastroEmpresa}
                                 disabled={carregando}
                                 loading={false}
-                                variant="outline-danger"
+                                variant="outline-secondary"
                                 type="button"
-                                className="w-full sm:mr-auto sm:w-auto"
+                                className="w-full sm:w-auto"
                             />
-                        )}
 
-                        <Botao
-                            size="sm"
-                            label="Cancelar"
-                            icon={<FaTimes />}
-                            onClick={fecharModalCadastroEmpresa}
-                            disabled={carregando}
-                            loading={false}
-                            variant="outline-secondary"
-                            type="button"
-                            className="w-full sm:w-auto"
-                        />
-
-                        <Botao
-                            size="sm"
-                            label={estaVisualizandoEmpresa ? "Salvar alterações" : "Salvar empresa"}
-                            icon={<FaSave />}
-                            onClick={() => {
-                                if (abaAtiva === "regras") {
-                                    void salvarEmpresa();
-                                }
-                            }}
-                            disabled={carregando}
-                            loading={carregando}
-                            variant="outline-primary"
-                            type={abaAtiva === "dados" ? "submit" : "button"}
-                            className="w-full sm:w-auto"
-                            form={abaAtiva === "dados" ? "formulario-cadastro-empresa" : undefined}
-                        />
+                            <Botao
+                                size="sm"
+                                label={estaVisualizandoEmpresa ? "Salvar alterações" : "Salvar empresa"}
+                                icon={<FaSave />}
+                                onClick={() => {
+                                    if (abaAtiva === "regras") {
+                                        void salvarEmpresa();
+                                    }
+                                }}
+                                disabled={carregando}
+                                loading={carregando}
+                                variant="outline-primary"
+                                type={abaAtiva === "dados" ? "submit" : "button"}
+                                className="w-full sm:w-auto"
+                                form={abaAtiva === "dados" ? "formulario-cadastro-empresa" : undefined}
+                            />
                         </>
                     ) : (
                         <Botao

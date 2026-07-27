@@ -66,6 +66,7 @@ type PropriedadesBarraLateral = {
 };
 
 const CHAVE_EMPRESA_NAVEGACAO = "empresaNavegacaoId";
+const LARGURA_MAXIMA_MOBILE = 1023;
 
 /**
  * Item recursivo do menu lateral.
@@ -146,7 +147,8 @@ export default function BarraLateral({
     const [empresaSelecionada, setEmpresaSelecionada] = useState<OpcaoEmpresaUsuario | null>(null);
     const [permissoesPerfil, setPermissoesPerfil] = useState<PermissoesPerfil | null>(null);
 
-    const versaoApp = "1.0.0";
+    const telaMobile = typeof window !== "undefined" && window.innerWidth <= LARGURA_MAXIMA_MOBILE;
+    const versaoApp = "1.0.1";
     const nomeEmpresaNavegacao = empresaSelecionada?.label ?? fantasiaEmpresa;
     const iniciaisEmpresa = nomeEmpresaNavegacao.trim().slice(0, 2).toUpperCase() || "GD";
     const opcoesEmpresasUsuario = empresasUsuario.map((empresa) => ({
@@ -196,7 +198,11 @@ export default function BarraLateral({
     }
 
     function fecharBarraLateral() {
-        aoFechar();
+
+        if(telaMobile === true){
+            
+            aoFechar();
+        }
     }
 
     /**
@@ -312,7 +318,7 @@ export default function BarraLateral({
                 )}
             </nav>
 
-            {aberta && (
+            {aberta && telaMobile && (
                 <Botao
                     size="sm"
                     type="button"

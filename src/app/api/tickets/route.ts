@@ -839,7 +839,7 @@ export async function POST(request: NextRequest) {
         const empresaId = normalizarId(formData.get("empresaId"));
         const produtoId = normalizarId(formData.get("produtoId"));
         const responsavelId = normalizarId(formData.get("responsavelId"));
-        const prioridade = validarStringComConteudo(formData.get("prioridade")) ? String(formData.get("prioridade")).trim() : "";
+        const prioridade = validarStringComConteudo(formData.get("prioridade")) ? String(formData.get("prioridade")).trim() : "baixa";
         const mensagemInicial = validarStringComConteudo(formData.get("mensagemInicial")) ? String(formData.get("mensagemInicial")).trim() : "";
         const anexos = formData.getAll("anexos").filter((valor): valor is File => valor instanceof File);
         const textoMensagemInicial = obterTextoMensagem(mensagemInicial);

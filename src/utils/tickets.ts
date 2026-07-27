@@ -34,15 +34,18 @@ export function usuarioPodeVisualizarTicket({
     const isResponsavel = parseInt(ticket.responsavel_id.toString()) === idUsuario;
     const isAdmin = perfilNormalizado === "admin";
 
+    //se usuario for responsavel pelo ticket
     if (isResponsavel) {
         return true;
     }
 
+    //se o usuario for admin
     if (isAdmin) {
 
         return true;
     }
 
+    //se usuario for agente de suporte
     if (usuarioAgenteSuporte) {
         const agenteId = parseInt(ticket.agente_id?.toString() || "0");
 
@@ -51,6 +54,7 @@ export function usuarioPodeVisualizarTicket({
             || ticket.status === STATUS_INICIAL_TICKET;
     }
 
+    //se usuario for cliente manager
     if (usuarioClienteManager) {
         return true;
     }
