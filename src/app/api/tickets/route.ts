@@ -481,7 +481,7 @@ export async function GET(request: NextRequest) {
                 from tickets t
                 inner join empresas e on e.id = t.empresa_id
                 inner join produtos p on p.id = t.produto_id
-                inner join usuarios responsavel on responsavel.id = t.responsavel_id
+                left join usuarios responsavel on responsavel.id = t.responsavel_id
                 left join usuarios agente on agente.id = t.agente_id
                 where t.empresa_id = $1
                 order by t.criado_em desc, t.id desc

@@ -372,7 +372,7 @@ export default function BarraLateral({
                         <ItemMenuLateral
                             key={item.label}
                             item={item}
-                            aoNavegar={function () { }}
+                            aoNavegar={fecharBarraLateral}
                         />
                     ))}
                 </nav>
