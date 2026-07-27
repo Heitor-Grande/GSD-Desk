@@ -117,9 +117,9 @@ function mapearEmpresaParaFormulario(empresa: EmpresaDetalhadaApi): DadosCadastr
                 value: String(empresa.superior_id),
             }
             : null,
-        exigirVinculoProduto: empresa.exigir_vinculo_produto,
-        suporteVisualizaApenasTicketsProprios: empresa.suporte_visualiza_apenas_tickets_proprios,
-        clienteVisualizaApenasTicketsProprios: empresa.cliente_visualiza_apenas_tickets_proprios,
+        exigirVinculoProduto: Boolean(empresa.exigir_vinculo_produto),
+        suporteVisualizaApenasTicketsProprios: Boolean(empresa.suporte_visualiza_apenas_tickets_proprios),
+        clienteVisualizaApenasTicketsProprios: Boolean(empresa.cliente_visualiza_apenas_tickets_proprios),
         criadoEm: formatarDataHoraFormulario(empresa.criado_em),
         atualizadoEm: formatarDataHoraFormulario(empresa.atualizado_em),
     };
@@ -570,7 +570,7 @@ export default function ModalCadastroEmpresa({
                             <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                                 <div className="flex items-start gap-3">
                                     <input
-                                        id="empresa-suporte-tickets-proprios"
+                                        id="empresa-cliente-tickets-proprios"
                                         className="mt-1 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                                         type="checkbox"
                                         checked={formulario.clienteVisualizaApenasTicketsProprios}
@@ -579,7 +579,7 @@ export default function ModalCadastroEmpresa({
                                     />
                                     <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <label className="text-sm font-semibold text-slate-800" htmlFor="empresa-suporte-tickets-proprios">
+                                            <label className="text-sm font-semibold text-slate-800" htmlFor="empresa-cliente-tickets-proprios">
                                                 Cliente visualiza apenas os seus próprios tickets
                                             </label>
                                             <span

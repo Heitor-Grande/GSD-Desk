@@ -17,6 +17,7 @@ type EmpresaListada = {
     superior_fantasia?: string | null;
     exigir_vinculo_produto: boolean;
     suporte_visualiza_apenas_tickets_proprios: boolean;
+    cliente_visualiza_apenas_tickets_proprios: boolean;
     criado_em: Date;
     atualizado_em: Date;
 };
@@ -220,6 +221,7 @@ export async function DELETE(request: NextRequest) {
                     superior_id,
                     exigir_vinculo_produto,
                     suporte_visualiza_apenas_tickets_proprios,
+                    cliente_visualiza_apenas_tickets_proprios,
                     criado_em,
                     atualizado_em
             `,
@@ -294,6 +296,7 @@ export async function GET(request: NextRequest) {
                         superior.fantasia as superior_fantasia,
                         e.exigir_vinculo_produto,
                         e.suporte_visualiza_apenas_tickets_proprios,
+                        e.cliente_visualiza_apenas_tickets_proprios,
                         e.criado_em,
                         e.atualizado_em
                     from empresas e
@@ -376,6 +379,7 @@ export async function GET(request: NextRequest) {
                         e.superior_id,
                         e.exigir_vinculo_produto,
                         e.suporte_visualiza_apenas_tickets_proprios,
+                        e.cliente_visualiza_apenas_tickets_proprios,
                         e.criado_em,
                         e.atualizado_em
                     from empresas e
@@ -404,6 +408,7 @@ export async function GET(request: NextRequest) {
                     superior.fantasia as superior_fantasia,
                     e.exigir_vinculo_produto,
                     e.suporte_visualiza_apenas_tickets_proprios,
+                    e.cliente_visualiza_apenas_tickets_proprios,
                     e.criado_em,
                     e.atualizado_em
                 from empresas e
