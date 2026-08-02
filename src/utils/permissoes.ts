@@ -100,9 +100,6 @@ export async function verificarPermissaoAPI({
         return criarRespostaApi(false, "O perfil vinculado ao usuário está Inativo.", null, 403);
     }
 
-    console.log(dadosPermissao.permissoes);
-    console.log(acao);
-    console.log(recurso);
     if (!validarEstruturaPermissaoRecurso(dadosPermissao.permissoes, recurso)) {
         return criarRespostaApi(false, "Você não possui permissão para executar esta ação.", null, 403);
     }

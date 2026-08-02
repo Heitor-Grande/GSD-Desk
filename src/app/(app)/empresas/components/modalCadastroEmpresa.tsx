@@ -60,7 +60,7 @@ type EmpresaSuperiorApi = {
     fantasia: string;
 };
 
-type AbaEmpresa = "dados" | "usuarios" | "produtos" | "regras";
+type AbaEmpresa = "dados" | "usuarios" | "produtos" | "regras" | "api";
 
 const estadoInicialFormulario: DadosCadastroEmpresa = {
     id: null,
@@ -296,6 +296,38 @@ export default function ModalCadastroEmpresa({
             : `${classesBase} bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900`;
     }
 
+    //consulta para carregar novo token para a API do GSD DESK
+    const [tokenAPI, settokenAPI] = useState("");
+    async function gerarNovoTokenAPI() {
+
+        if (!formulario.id) {
+            setMensagemResposta("Selecione uma empresa válida para gerar o token.");
+            return;
+        }
+
+        setCarregando(true);
+        setTextoCarregamento("Gerando novo token...");
+        setMensagemResposta("");
+
+        try {
+            const resposta = await requisitarAPI(`/api/empresas/tokenapi?id_empresa=${formulario.id}`, {
+                method: "GET",
+            });
+
+            settokenAPI(resposta.dados as string);
+            setMensagemResposta("Token gerado com sucesso.");
+        } catch (erro) {
+
+            const mensagemErro = erro instanceof Error
+                ? erro.message
+                : "Não foi possível gerar o token.";
+
+            setMensagemResposta(mensagemErro);
+        } finally {
+            setCarregando(false);
+        }
+    }
+
     useEffect(() => {
         if (!aberto) {
             return;
@@ -361,6 +393,13 @@ export default function ModalCadastroEmpresa({
                                 onClick={() => setAbaAtiva("regras")}
                             >
                                 Regras
+                            </button>
+                            <button
+                                type="button"
+                                className={obterClassesAba("api")}
+                                onClick={() => setAbaAtiva("api")}
+                            >
+                                Api
                             </button>
                         </div>
                     </div>
@@ -594,6 +633,47 @@ export default function ModalCadastroEmpresa({
                             </div>
                         </div>
                     )}
+
+                    {
+                        abaAtiva === "api" && (
+
+                            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                <div className="mb-4">
+                                    <h3 className="text-base font-bold text-slate-900">Token de acesso para API</h3>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Gere um token de acesso para a empresa utilizar a API do GSD Desk. O token é único e deve ser mantido em sigilo.
+                                    </p>
+                                </div>
+                                <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                        <CampoTexto
+                                            required={false}
+                                            id="empresa-token-api"
+                                            type="text"
+                                            className="flex-1"
+                                            label="Token de acesso"
+                                            placeholder="Token de acesso"
+                                            value={tokenAPI}
+                                            onChange={function () {
+
+                                            }}
+                                            disabled={false}
+                                        />
+                                        <Botao
+                                            variant="outline-primary"
+                                            type="button"
+                                            className=""
+                                            size="sm"
+                                            label="Gerar novo token"
+                                            onClick={gerarNovoTokenAPI}
+                                            disabled={carregando}
+                                            loading={carregando}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
                 </Modal.Body>
 
                 <Modal.Footer className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">

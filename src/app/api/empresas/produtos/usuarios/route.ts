@@ -317,12 +317,6 @@ export async function DELETE(request: NextRequest) {
             return criarRespostaApi(false, "Sessão inválida ou expirada.", null, 401);
         }
 
-        const usuarioAdministrador = await verificarUsuarioAdministrador(idUsuarioAutenticado);
-
-        if (!usuarioAdministrador) {
-            return criarRespostaApi(false, "Apenas usuários administradores podem remover vínculos de produto.", null, 403);
-        }
-
         const id = Number(request.nextUrl.searchParams.get("id"));
         const empresaId = Number(request.nextUrl.searchParams.get("empresaId"));
         const produtoId = Number(request.nextUrl.searchParams.get("produtoId"));
