@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
             return criarRespostaApi(false, "Não foi encontrado nenhum usuário com perfil 'Cliente Manager' ativo para a empresa especificada.", null, 400);
         }
 
-        const responsavel = consultaUsuarioClienteManager.rows[0].id;
+        const responsavel = consultaUsuarioClienteManager.rows[0];
 
         //criando corpo ticket 
         const ticket = await consultarBancoDados(`
@@ -141,24 +141,24 @@ export async function POST(request: NextRequest) {
                 )
                 values ($1, $2, $3, $4, $5, $6, $7, $8)
                 returning id
-            `, [titulo, empresaId, produtoId, responsavel, null, STATUS_INICIAL_TICKET, "alta", responsavel])
+            `, [titulo, empresaId, produtoId, responsavel.id, null, STATUS_INICIAL_TICKET, "alta", responsavel.id])
 
         const ticketId = ticket.rows[0].id;
 
         //criando corpo ticket detalhes
         await consultarBancoDados(`
-            insert into tickets_detalhes (
+            insert into ticket_mensagens (
                     ticket_id,
                     conteudo,
-                    criado_por
+                    enviado_por
                 )
                 values ($1, $2, $3)
-            `, [ticketId, conteudo, responsavel])
+            `, [ticketId, conteudo, responsavel.id])
 
         try {
             await registrarAuditoriaSegura({
                 acao: "CREATE",
-                usuarioId: responsavel,
+                usuarioId: parseInt(responsavel.id),
                 empresaId: empresaId,
                 metodo: request.method,
                 rota: request.nextUrl.pathname,
@@ -203,6 +203,7 @@ export async function POST(request: NextRequest) {
         return criarRespostaApi(true, "Ticket criado com sucesso.", { ticketId: ticketId }, 200);
     } catch (error) {
 
-        return criarRespostaApi(false, "Erro ao processar a solicitação.", error, 500);
+        console.error(error);
+        return criarRespostaApi(false, "Erro ao processar a solicitação. Informe o suporte.", error, 500);
     }
 }
