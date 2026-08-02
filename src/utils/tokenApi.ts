@@ -76,3 +76,35 @@ export async function gerarTokenAPI(dados: dadosParaTokenAPI): Promise<string> {
         return "Erro inesperado ao gerar token para API, consulte o suporte.";
     }
 }
+
+//função para verificar se o token da API é valido
+export function verificarTokenAPI(token: string): { sucesso: boolean; payload: dadosParaTokenAPI | null; message: string } {
+    try {
+        if (segredoAPI === '') {
+
+            console.error("Segredo da API não definido.");
+            return {
+                sucesso: false,
+                payload: null,
+                message: "Segredo da API não definido."
+            };
+        }
+
+        jwt.verify(token, segredoAPI);
+
+        return {
+            sucesso: true,
+            payload: jwt.decode(token) as dadosParaTokenAPI,
+            message: "Token válido."
+        };
+
+    } catch (error) {
+
+        console.error("Token de API inválido:", error);
+        return {
+            sucesso: false,
+            payload: null,
+            message: "Token de API inválido."
+        }
+    }
+}

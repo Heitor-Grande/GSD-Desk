@@ -443,6 +443,9 @@ export default function ProdutosEmpresa({
                                         <p className="mt-1 break-words text-sm text-slate-500">
                                             {produto.descricao || "Sem descrição."}
                                         </p>
+                                        <span className="mt-1 inline-block text-xs font-medium text-slate-400">
+                                            Id para integração: <span className="font-mono text-slate-400">{produto.id}</span>
+                                        </span>
                                     </button>
 
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

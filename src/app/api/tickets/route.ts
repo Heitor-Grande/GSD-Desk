@@ -231,7 +231,7 @@ async function inserirAnexosMensagem({
 /**
  * Monta o HTML de notificação enviado aos agentes quando um ticket é aberto.
  */
-function montarHtmlNovoTicket({
+export function montarHtmlNovoTicket({
     titulo,
     empresa,
     produto,

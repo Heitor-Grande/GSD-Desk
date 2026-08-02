@@ -17,6 +17,7 @@ O **GSD Desk** é uma aplicação web para gerenciamento de tickets, solicitaç�
 * Gestão de produtos vinculados ao cadastro de empresas.
 * Tela de minha conta para manutenção dos dados do usuário autenticado.
 * Configurações gerais da aplicação e parâmetros de e-mail.
+* API de integração para criação automática de tickets a partir de erros em softwares de clientes.
 * Respostas de API padronizadas com `sucesso`, `msg` e `dados`.
 
 ---
@@ -61,6 +62,73 @@ Permite consultar empresas cadastradas e, para usuários administradores, criar,
 ### Minha conta
 
 Tela para o usuário autenticado consultar e atualizar seus próprios dados.
+
+---
+
+## API de integração
+
+O GSD Desk possui uma API de integração para permitir que softwares de clientes abram tickets automaticamente quando ocorrerem erros no ambiente do cliente. O objetivo é registrar a falha diretamente na fila de atendimento, sem depender de abertura manual pelo usuário.
+
+### Geração do token
+
+O token de acesso da integração é gerado no cadastro da empresa, na aba **API**. A geração exige usuário autenticado com permissão de atualização de empresa. O token é único para a empresa, deve ser mantido em sigilo e enviado nas requisições como Bearer Token.
+
+Endpoint interno usado pela tela administrativa:
+
+```text
+GET /api/empresas/tokenapi?id_empresa={idEmpresa}
+```
+
+### Criação automática de ticket
+
+Endpoint público da integração:
+
+```text
+POST /api/integracao/autoticket
+```
+
+Header obrigatório:
+
+```text
+Authorization: Bearer {token_api}
+Content-Type: application/json
+```
+
+Body esperado:
+
+```json
+{
+  "informacoes_gerais": {
+    "titulo": "Erro ao processar pedido",
+    "empresa_id": 1,
+    "produto_id": 10
+  },
+  "detalhes": {
+    "conteudo": "Descrição técnica do erro, stack trace, tela, usuário afetado ou demais dados úteis para o suporte."
+  }
+}
+```
+
+Regras principais:
+
+* O token precisa ser válido.
+* O usuário que gerou o token precisa continuar ativo.
+* O produto informado precisa pertencer à empresa e estar ativo.
+* A empresa precisa possuir um usuário ativo com perfil `Cliente Manager`, usado como responsável inicial do ticket.
+* O ticket é criado com status inicial padrão, prioridade alta e título sufixado com `- Api`.
+* Após a criação, agentes de suporte vinculados à empresa são notificados por e-mail quando houver endereços cadastrados.
+
+Resposta de sucesso:
+
+```json
+{
+  "sucesso": true,
+  "msg": "Ticket criado com sucesso.",
+  "dados": {
+    "ticketId": 123
+  }
+}
+```
 
 ---
 

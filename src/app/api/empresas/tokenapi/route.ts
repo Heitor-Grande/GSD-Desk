@@ -1,8 +1,8 @@
 import { obterIdUsuarioAutenticado } from "@/utils/autenticacao";
 import { verificarPermissaoAPI } from "@/utils/permissoes";
 import { criarRespostaApi } from "@/utils/respostaApi";
+import { gerarTokenAPI } from "@/utils/tokenApi";
 import { NextRequest } from "next/server";
-import { gerarTokenAPI } from "@/utils/gerarTokenAPI";
 
 //rota para gerar token de acesso para a empresa usar a API gsd desk
 export async function GET(request: NextRequest) {
